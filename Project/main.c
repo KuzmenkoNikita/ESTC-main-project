@@ -54,10 +54,30 @@
 #include "boards.h"
 
 /**
+ * @brief Function for blinkin led blinking
+ * @param unLedNum led number
+ * @param unCnt count of blinks
+ */
+void led_blink(uint32_t unLedNum, uint32_t unCnt)
+{
+    for(int i = 0; i < unCnt; ++i)
+    {
+        bsp_board_led_on(unLedNum);
+
+        nrf_delay_ms(300);
+
+        bsp_board_led_off(unLedNum);
+
+        nrf_delay_ms(300);
+    }
+}
+
+/**
  * @brief Function for application main entry.
  */
 int main(void)
 {
+    unsigned int mDevID[LEDS_NUMBER] = {6,5,7,8};
     /* Configure board. */
     bsp_board_init(BSP_INIT_LEDS);
 
@@ -66,8 +86,8 @@ int main(void)
     {
         for (int i = 0; i < LEDS_NUMBER; i++)
         {
-            bsp_board_led_invert(i);
-            nrf_delay_ms(500);
+            led_blink(i, mDevID[i]);
+            nrf_delay_ms(1000);
         }
     }
 }
