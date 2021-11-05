@@ -29,6 +29,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/soc/nrfx_atomic.c \
   $(PROJ_DIR)/main.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52840.c \
+  $(PROJ_DIR)/pca10059_led/pca10059_led.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -54,6 +55,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/memobj \
   $(SDK_ROOT)/external/fprintf \
   $(SDK_ROOT)/components/libraries/log/src \
+  $(PROJ_DIR)/pca10059_led \
 
 # Libraries common to all targets
 LIB_FILES += \
