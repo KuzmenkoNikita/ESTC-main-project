@@ -1,5 +1,6 @@
 #include "nrf_delay.h"
 #include "pca10059_led.h"
+#include "pca10059_button.h"
 
 #define PCA10059_DEVID_SIZE     4
 
@@ -29,18 +30,25 @@ void led_blink(ELedNum eLed, ELedColor eColor, unsigned int unCnt)
  */
 int main(void)
 {
+    eBtnState BtnState = BTN_UNDEFINED;
     unsigned int mDevID[PCA10059_DEVID_SIZE] = {6,5,7,8};
     unsigned int mLedsNum[PCA10059_DEVID_SIZE] = {ELED_1, ELED_2, ELED_2, ELED_2};
     unsigned int mColors[PCA10059_DEVID_SIZE] = {ECOLOR_GREEN, ECOLOR_RED, ECOLOR_GREEN, ECOLOR_BLUE};
 
     pca10059_leds_init();
+    pca10059_button_init();
 
     while(1)
     {
-        for(int i = 0; i < PCA10059_DEVID_SIZE; ++i)
+        pca10059_GetButtonState(&BtnState);
+        
+        if(BtnState == BTN_PRESSED)
         {
-            led_blink(mLedsNum[i], mColors[i], mDevID[i]);
-            nrf_delay_ms(1000);
+            for(int i = 0; i < PCA10059_DEVID_SIZE; ++i)
+            {
+                led_blink(mLedsNum[i], mColors[i], mDevID[i]);
+                nrf_delay_ms(1000);
+            }
         }
     }
 }
