@@ -1,7 +1,18 @@
 #include "nrf_delay.h"
 #include "pca10059_led.h"
+#include <stdint.h>
 
 #define PCA10059_DEVID_SIZE     4
+
+/** @brief Blinking params */
+typedef struct
+{
+    ELedNum     eLed;
+    ELedColor   eColor;
+    uint32_t    BlinksCnt;
+    uint32_t    BlinkTimems;
+}SBlinkParams;
+
 
 /**
  * @brief Function for blinking led
@@ -9,17 +20,20 @@
  * @param eColor Led color
  * @param unCnt count of blinks
  */
-void led_blink(ELedNum eLed, ELedColor eColor, unsigned int unCnt)
+void led_blink(SBlinkParams* psBlinkParam)
 {
-    for(int i = 0; i < unCnt; ++i)
+    if(!psBlinkParam)
+        return;
+
+    for(int i = 0; i < psBlinkParam->BlinksCnt; ++i)
     {
-        pca10059_LedSetColor(eLed, eColor);
+        pca10059_LedSetColor(psBlinkParam->eLed, psBlinkParam->eColor);
 
-        nrf_delay_ms(300);
+        nrf_delay_ms(psBlinkParam->BlinkTimems);
 
-        pca10059_LedSetColor(eLed, ECOLOR_OFF);
+        pca10059_LedSetColor(psBlinkParam->eLed, ECOLOR_OFF);
 
-        nrf_delay_ms(300);
+        nrf_delay_ms(psBlinkParam->BlinkTimems);
     }
 }
 
@@ -29,20 +43,22 @@ void led_blink(ELedNum eLed, ELedColor eColor, unsigned int unCnt)
  */
 int main(void)
 {
-    unsigned int mBlinkParams[PCA10059_DEVID_SIZE][3] =
-                                                        {
-                                                            {ELED_1, ECOLOR_GREEN, 6},
-                                                            {ELED_2, ECOLOR_RED, 5},
-                                                            {ELED_2, ECOLOR_GREEN, 7},
-                                                            {ELED_2, ECOLOR_BLUE, 8},
-                                                        };
+    SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
+                                                    {
+                                                        {ELED_1, ECOLOR_GREEN, 6, 300},
+                                                        {ELED_2, ECOLOR_RED, 5, 300},
+                                                        {ELED_2, ECOLOR_GREEN, 7, 300},
+                                                        {ELED_2, ECOLOR_BLUE, 8, 300}
+                                                    };
+
+
     pca10059_leds_init();
 
     while(1)
     {
         for(int i = 0; i < PCA10059_DEVID_SIZE; ++i)
         {
-            led_blink(mBlinkParams[i][0], mBlinkParams[i][1], mBlinkParams[i][2]);
+            led_blink(&msBlinkParams[i]);
             nrf_delay_ms(1000);
         }
     }
