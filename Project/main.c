@@ -31,10 +31,18 @@ void led_blink(ELedNum eLed, ELedColor eColor, unsigned int unCnt)
 int main(void)
 {
     eBtnState BtnState = BTN_UNDEFINED;
+    unsigned int mBlinkParams[PCA10059_DEVID_SIZE][3] =
+                                                        {
+                                                            {ELED_1, ECOLOR_GREEN, 6},
+                                                            {ELED_2, ECOLOR_RED, 5},
+                                                            {ELED_2, ECOLOR_GREEN, 7},
+                                                            {ELED_2, ECOLOR_BLUE, 8},
+                                                        };
+    /*
     unsigned int mDevID[PCA10059_DEVID_SIZE] = {6,5,7,8};
     unsigned int mLedsNum[PCA10059_DEVID_SIZE] = {ELED_1, ELED_2, ELED_2, ELED_2};
     unsigned int mColors[PCA10059_DEVID_SIZE] = {ECOLOR_GREEN, ECOLOR_RED, ECOLOR_GREEN, ECOLOR_BLUE};
-
+    */
     pca10059_leds_init();
     pca10059_button_init();
 
@@ -46,7 +54,7 @@ int main(void)
         {
             for(int i = 0; i < PCA10059_DEVID_SIZE; ++i)
             {
-                led_blink(mLedsNum[i], mColors[i], mDevID[i]);
+                led_blink(mBlinkParams[i][0], mBlinkParams[i][1], mBlinkParams[i][2]);
                 nrf_delay_ms(1000);
             }
         }
