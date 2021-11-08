@@ -48,7 +48,6 @@ int main(void)
     unsigned int unTotalTime = 0;
     unsigned int i = 0;
     unsigned int unBlinkCnt = 0;
-    eBtnState BtnState = BTN_UNDEFINED;
 
     SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
                                                     {
@@ -63,10 +62,8 @@ int main(void)
     pca10059_button_init();
 
     while(1)
-    {
-        pca10059_GetButtonState(&BtnState);
-        
-        if(BtnState == BTN_PRESSED)
+    {   
+        if(BTN_PRESSED == pca10059_GetButtonState())
         {
             if(unTotalTime == msBlinkParams[i].BlinkTimems)
                 eColor = ECOLOR_OFF;

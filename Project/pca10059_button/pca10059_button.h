@@ -18,4 +18,4 @@ void pca10059_button_init(void);
  * @param peState   pointer to button state
  * @return 0 if OK, -1 if Error
  */
-int pca10059_GetButtonState(eBtnState* peState);
+eBtnState pca10059_GetButtonState(void);
