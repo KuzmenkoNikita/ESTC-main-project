@@ -1,6 +1,8 @@
+#include <stdbool.h>
+#include <stdint.h>
 #include "nrf_delay.h"
 #include "pca10059_led.h"
-#include <stdint.h>
+#include "pca10059_button.h"
 
 #define PCA10059_DEVID_SIZE     4
 
@@ -43,6 +45,10 @@ void led_blink(SBlinkParams* psBlinkParam)
  */
 int main(void)
 {
+    unsigned int unTotalTime = 0;
+    unsigned int i = 0;
+    unsigned int unBlinkCnt = 0;
+
     SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
                                                     {
                                                         {ELED_1, ECOLOR_GREEN, 6, 300},
@@ -50,16 +56,37 @@ int main(void)
                                                         {ELED_2, ECOLOR_GREEN, 7, 300},
                                                         {ELED_2, ECOLOR_BLUE, 8, 300}
                                                     };
-
+    ELedColor eColor = msBlinkParams[0].eColor;
 
     pca10059_leds_init();
+    pca10059_button_init();
 
     while(1)
-    {
-        for(int i = 0; i < PCA10059_DEVID_SIZE; ++i)
+    {   
+        if(BTN_PRESSED == pca10059_GetButtonState())
         {
-            led_blink(&msBlinkParams[i]);
-            nrf_delay_ms(1000);
+            if(unTotalTime == msBlinkParams[i].BlinkTimems)
+                eColor = ECOLOR_OFF;
+            else if (unTotalTime == 2 * msBlinkParams[i].BlinkTimems)
+            {
+                unTotalTime = 0;
+                ++unBlinkCnt;
+                if(unBlinkCnt == msBlinkParams[i].BlinksCnt)
+                {
+                    unBlinkCnt = 0;
+                    ++i;
+                    if(i == PCA10059_DEVID_SIZE)
+                        i = 0;
+                }
+
+                eColor = msBlinkParams[i].eColor;
+            }
+
+            pca10059_LedSetColor(msBlinkParams[i].eLed, eColor);
+
+            nrf_delay_ms(1);
+
+            ++unTotalTime;
         }
     }
 }

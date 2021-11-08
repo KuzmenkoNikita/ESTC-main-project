@@ -30,6 +30,7 @@ SRC_FILES += \
   $(PROJ_DIR)/main.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52840.c \
   $(PROJ_DIR)/pca10059_led/pca10059_led.c \
+  $(PROJ_DIR)/pca10059_button/pca10059_button.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -56,6 +57,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/external/fprintf \
   $(SDK_ROOT)/components/libraries/log/src \
   $(PROJ_DIR)/pca10059_led \
+  $(PROJ_DIR)/pca10059_button \
 
 # Libraries common to all targets
 LIB_FILES += \
