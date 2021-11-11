@@ -61,15 +61,15 @@ void logs_init()
 void log_led_color(ELedNum eLed, ELedColor eColor)
 {
     unsigned LedNum = 0;
-    char Color[10] = "";
+    char* Color_str = 0;
     
     switch(eColor)
     {
-        case ECOLOR_OFF:    strcpy(Color, "OFF"); break;
-        case ECOLOR_GREEN:  strcpy(Color, "Green"); break;  
-        case ECOLOR_RED:    strcpy(Color, "Red"); break;
-        case ECOLOR_BLUE:   strcpy(Color, "Blue"); break;
-        case ECOLOR_ORANGE: strcpy(Color, "Orange"); break;
+        case ECOLOR_OFF:    Color_str = "Led color OFF, LED num: %u \n"; break;
+        case ECOLOR_GREEN:  Color_str = "Led color GREEN, LED num: %u \n"; break;  
+        case ECOLOR_RED:    Color_str = "Led color RED, LED num: %u \n"; break;
+        case ECOLOR_BLUE:   Color_str = "Led color BLUE, LED num: %u \n"; break;
+        case ECOLOR_ORANGE: Color_str = "Led color ORANGE, LED num: %u \n"; break;
         default: NRF_LOG_INFO("Uknown LED coolor \n"); return;
     }
 
@@ -80,7 +80,7 @@ void log_led_color(ELedNum eLed, ELedColor eColor)
         default: NRF_LOG_INFO("Uknown LED coolor \n"); return;
     }
 
-    NRF_LOG_INFO("Led color %s, LED num: %u \n", Color, LedNum);
+    NRF_LOG_INFO(Color_str, LedNum);
 }
 
 
