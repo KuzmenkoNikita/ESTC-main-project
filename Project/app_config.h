@@ -125,6 +125,10 @@
 #define LOG_BACKEND_USB_UTILIZE_POWER_EVENTS 1
 #endif
 
+#ifndef NRFX_SYSTICK_ENABLED
+#define NRFX_SYSTICK_ENABLED 1
+#endif
+
 // </e>
 
 #endif

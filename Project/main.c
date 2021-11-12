@@ -11,6 +11,7 @@
 #include "nrf_log_backend_usb.h"
 #include "app_usbd.h"
 #include "app_usbd_serial_num.h"
+#include "nrfx_systick.h"
 
 #define PCA10059_DEVID_SIZE     4
 
@@ -106,6 +107,7 @@ int main(void)
     pca10059_leds_init();
     pca10059_button_init();
     logs_init();
+    nrfx_systick_init();
 
     while(1)
     {   
