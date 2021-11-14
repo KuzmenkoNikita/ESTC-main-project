@@ -123,6 +123,7 @@ int main(void)
                eColor = ECOLOR_GREEN; 
 
             nrfx_systick_get(&systickState);
+            nrfx_systick_get(&systickState);
 
             pca10059_LedSetColor(ELED_2, eColor);
         }
