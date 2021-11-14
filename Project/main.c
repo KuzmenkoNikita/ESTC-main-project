@@ -103,14 +103,30 @@ int main(void)
                                                     };
     ELedColor eColor = msBlinkParams[0].eColor;
     bool ChangeColor = true;
+    nrfx_systick_state_t systickState;
+    uint32_t  testVal = 0;
 
     pca10059_leds_init();
     pca10059_button_init();
     logs_init();
     nrfx_systick_init();
 
+    nrfx_systick_get(&systickState);
+
     while(1)
-    {   
+    {
+        if (nrfx_systick_test(&systickState, 80000))
+        {
+            if(eColor == ECOLOR_GREEN)
+                eColor = ECOLOR_OFF;
+            else
+               eColor = ECOLOR_GREEN; 
+
+            nrfx_systick_get(&systickState);
+
+            pca10059_LedSetColor(ELED_2, eColor);
+        }
+
         if(BTN_PRESSED == pca10059_GetButtonState())
         {
             if(unTotalTime == msBlinkParams[i].BlinkTimems)
@@ -136,10 +152,17 @@ int main(void)
 
             if(ChangeColor)
             {
+                
                 ChangeColor = !ChangeColor; 
                 log_led_color(msBlinkParams[i].eLed, eColor);
 
-                pca10059_LedSetColor(msBlinkParams[i].eLed, eColor);
+                if(nrfx_systick_test(&systickState, 100000))
+                    testVal = 1;
+                else
+                    testVal = 0;
+
+                NRF_LOG_INFO("Ticks %d", testVal);
+                //pca10059_LedSetColor(msBlinkParams[i].eLed, eColor);
             }
 
             nrf_delay_ms(1);
