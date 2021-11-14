@@ -1,31 +1,33 @@
 #include "pca10059_led_pwm.h"
 
 
+typedef enum
+{
+    PWM_COLOR_RED,
+    PWM_COLOR_GREEN,
+    PWM_COLOR_BLUE
+}EPwmColors;
+
 void pca10059_led_pwm_init(Spca10059_led_pwm* psLedPwm, uint32_t PeriodUsec, ELedNum eLed)
 {
+    unsigned i = 0;
+
     if(!psLedPwm)
         return;
 
     nrfx_systick_init();
     pca10059_leds_init();
 
-    nrfx_systick_get(&psLedPwm->sGreenTickState);
-    nrfx_systick_get(&psLedPwm->sBlueTickState);
-    nrfx_systick_get(&psLedPwm->sRedTickState);
+    for(i = 0; i < PWM_COUNTOF_LED_COLORS; ++i)
+    {
+        nrfx_systick_get(&psLedPwm->sColorPwmParams[i].sSysTickState);
+        psLedPwm->sColorPwmParams[i].eLedState = ECOLOR_OFF;
+        psLedPwm->sColorPwmParams[i].unTicksCnt = 0;
+        psLedPwm->sColorPwmParams[i].unTimeOnUsec = 0;
+    }
 
     psLedPwm->PeriodUsec        = PeriodUsec;
     psLedPwm->eLed              = eLed;
-
-    psLedPwm->unGreenTickCnt    = 0;
-    psLedPwm->unBlueTickCnt     = 0;
-    psLedPwm->unRedTickCnt      = 0;
-    psLedPwm->sTimeParams.unGreenTOnUsec = 0;
-    psLedPwm->sTimeParams.unBlueTOnUsec = 0;
-    psLedPwm->sTimeParams.unRedTOnUsec = 0;
-
-    psLedPwm->sColors.eGreenState   = ECOLOR_OFF;
-    psLedPwm->sColors.eRedState     = ECOLOR_OFF;
-    psLedPwm->sColors.eBlueState    = ECOLOR_OFF;
 }
 /* **************************************************** */
 void pca10059_led_pwm_set_params(Spca10059_led_pwm* psLedPwm, const SLedPwmTimeParams* psParams)
@@ -34,88 +36,59 @@ void pca10059_led_pwm_set_params(Spca10059_led_pwm* psLedPwm, const SLedPwmTimeP
         return;
 
     if(psParams->unBlueTOnUsec > psLedPwm->PeriodUsec)
-        psLedPwm->sTimeParams.unBlueTOnUsec = psLedPwm->PeriodUsec;
+        psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].unTimeOnUsec = psLedPwm->PeriodUsec;
     else
-        psLedPwm->sTimeParams.unBlueTOnUsec = psParams->unBlueTOnUsec;
+         psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].unTimeOnUsec = psParams->unBlueTOnUsec;
 
     if(psParams->unGreenTOnUsec > psLedPwm->PeriodUsec)
-        psLedPwm->sTimeParams.unGreenTOnUsec = psLedPwm->PeriodUsec;
+         psLedPwm->sColorPwmParams[PWM_COLOR_GREEN].unTimeOnUsec = psLedPwm->PeriodUsec;
     else
-        psLedPwm->sTimeParams.unGreenTOnUsec = psParams->unGreenTOnUsec;
+         psLedPwm->sColorPwmParams[PWM_COLOR_GREEN].unTimeOnUsec = psParams->unGreenTOnUsec;
 
     if(psParams->unRedTOnUsec > psLedPwm->PeriodUsec)
-        psLedPwm->sTimeParams.unRedTOnUsec = psLedPwm->PeriodUsec;
+         psLedPwm->sColorPwmParams[PWM_COLOR_RED].unTimeOnUsec = psLedPwm->PeriodUsec;
     else
-        psLedPwm->sTimeParams.unRedTOnUsec = psParams->unRedTOnUsec;
+         psLedPwm->sColorPwmParams[PWM_COLOR_RED].unTimeOnUsec = psParams->unRedTOnUsec;
     
 }
 /* **************************************************** */
 void pca10059_led_pwm_process(Spca10059_led_pwm* psLedPwm)
 {
+    SLedColors sColors;
+    unsigned i = 0;
+
     if(!psLedPwm)
         return;
 
-    if(psLedPwm->sTimeParams.unGreenTOnUsec != 0)
+    for(i = 0; i < PWM_COUNTOF_LED_COLORS; ++i)
     {
-        if (nrfx_systick_test(&psLedPwm->sGreenTickState, psLedPwm->unGreenTickCnt))
+        if(psLedPwm->sColorPwmParams[i].unTimeOnUsec != 0)
         {
-            if(psLedPwm->sColors.eGreenState == ECOLOR_ON)
+            if (nrfx_systick_test(&psLedPwm->sColorPwmParams[i].sSysTickState, psLedPwm->sColorPwmParams[i].unTicksCnt))
             {
-                psLedPwm->sColors.eGreenState = ECOLOR_OFF;
-                psLedPwm->unGreenTickCnt = psLedPwm->PeriodUsec - psLedPwm->sTimeParams.unGreenTOnUsec;
+                if(psLedPwm->sColorPwmParams[i].eLedState == ECOLOR_ON)
+                {
+                    psLedPwm->sColorPwmParams[i].eLedState = ECOLOR_OFF;
+                    psLedPwm->sColorPwmParams[i].unTicksCnt = psLedPwm->PeriodUsec - psLedPwm->sColorPwmParams[i].unTimeOnUsec;
+                }
+                else
+                {
+                    psLedPwm->sColorPwmParams[i].eLedState = ECOLOR_ON;
+                    psLedPwm->sColorPwmParams[i].unTicksCnt = psLedPwm->sColorPwmParams[i].unTimeOnUsec; 
+                }
+
+                nrfx_systick_get(&psLedPwm->sColorPwmParams[i].sSysTickState);
             }
-            else
-            {
-                psLedPwm->sColors.eGreenState = ECOLOR_ON;
-                psLedPwm->unGreenTickCnt = psLedPwm->sTimeParams.unGreenTOnUsec; 
-            }
-
-            nrfx_systick_get(&psLedPwm->sGreenTickState);
-
-            //pca10059_LedSetColor(psLedPwm->eLed, &psLedPwm->sColors);
-        }
-    }
-    else
-        psLedPwm->sColors.eGreenState = ECOLOR_OFF;
-
-
-    if (nrfx_systick_test(&psLedPwm->sBlueTickState, psLedPwm->unBlueTickCnt))
-    {
-        if(psLedPwm->sColors.eBlueState == ECOLOR_ON)
-        {
-            psLedPwm->sColors.eBlueState = ECOLOR_OFF;
-            psLedPwm->unBlueTickCnt = psLedPwm->PeriodUsec - psLedPwm->sTimeParams.unBlueTOnUsec;
         }
         else
-        {
-            psLedPwm->sColors.eBlueState = ECOLOR_ON;
-            psLedPwm->unBlueTickCnt = psLedPwm->sTimeParams.unBlueTOnUsec; 
-        }
-
-        nrfx_systick_get(&psLedPwm->sBlueTickState);
-
-        //pca10059_LedSetColor(psLedPwm->eLed, &psLedPwm->sColors);
+            psLedPwm->sColorPwmParams[i].eLedState = ECOLOR_OFF;
     }
+    
+    sColors.eBlueState  = psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].eLedState;
+    sColors.eRedState   = psLedPwm->sColorPwmParams[PWM_COLOR_RED].eLedState;
+    sColors.eGreenState = psLedPwm->sColorPwmParams[PWM_COLOR_GREEN].eLedState;
 
-    if (nrfx_systick_test(&psLedPwm->sRedTickState, psLedPwm->unRedTickCnt))
-    {
-        if(psLedPwm->sColors.eRedState == ECOLOR_ON)
-        {
-            psLedPwm->sColors.eRedState = ECOLOR_OFF;
-            psLedPwm->unRedTickCnt = psLedPwm->PeriodUsec - psLedPwm->sTimeParams.unRedTOnUsec;
-        }
-        else
-        {
-            psLedPwm->sColors.eRedState = ECOLOR_ON;
-            psLedPwm->unRedTickCnt = psLedPwm->sTimeParams.unRedTOnUsec; 
-        }
-
-        nrfx_systick_get(&psLedPwm->sRedTickState);
-
-        //pca10059_LedSetColor(psLedPwm->eLed, &psLedPwm->sColors);
-    }
-
-    pca10059_LedSetColor(psLedPwm->eLed, &psLedPwm->sColors);
+    pca10059_LedSetColor(psLedPwm->eLed, &sColors);
 }
 
 

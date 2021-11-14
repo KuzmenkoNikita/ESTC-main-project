@@ -29,31 +29,6 @@ typedef struct
 
 
 /**
- * @brief Function for blinking led
- * @param eLed Led num for blink
- * @param eColor Led color
- * @param unCnt count of blinks
- */
-void led_blink(SBlinkParams* psBlinkParam)
-{
-    #if 0
-    if(!psBlinkParam)
-        return;
-
-    for(int i = 0; i < psBlinkParam->BlinksCnt; ++i)
-    {
-        pca10059_LedSetColor(psBlinkParam->eLed, psBlinkParam->eColor);
-
-        nrf_delay_ms(psBlinkParam->BlinkTimems);
-
-        pca10059_LedSetColor(psBlinkParam->eLed, ECOLOR_OFF);
-
-        nrf_delay_ms(psBlinkParam->BlinkTimems);
-    }
-    #endif
-}
-
-/**
  * @brief Init logs
  */
 void logs_init()
@@ -64,21 +39,9 @@ void logs_init()
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
-void log_led_color(ELedNum eLed/*,  ELedColor eColor*/)
+void log_led_color(ELedNum eLed,  bool fRiseColor)
 {
-    #if 0
     unsigned LedNum = 0;
-    char* Color_str = 0;
-    
-    switch(eColor)
-    {
-        case ECOLOR_OFF:    Color_str = "Led color OFF, LED num: %u \n"; break;
-        case ECOLOR_GREEN:  Color_str = "Led color GREEN, LED num: %u \n"; break;  
-        case ECOLOR_RED:    Color_str = "Led color RED, LED num: %u \n"; break;
-        case ECOLOR_BLUE:   Color_str = "Led color BLUE, LED num: %u \n"; break;
-        case ECOLOR_ORANGE: Color_str = "Led color ORANGE, LED num: %u \n"; break;
-        default: NRF_LOG_INFO("Uknown LED coolor \n"); return;
-    }
 
     switch(eLed)
     {
@@ -87,8 +50,12 @@ void log_led_color(ELedNum eLed/*,  ELedColor eColor*/)
         default: NRF_LOG_INFO("Uknown LED coolor \n"); return;
     }
 
-    NRF_LOG_INFO(Color_str, LedNum);
-    #endif
+    if(fRiseColor)
+    {
+        NRF_LOG_INFO("LED %d stated turning on \n", LedNum);
+    }
+    else
+        NRF_LOG_INFO("LED %d stated turning off \n", LedNum); 
 }
 
 
@@ -103,42 +70,19 @@ int main(void)
     unsigned int unBlinkCnt = 0;
     SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
                                                     {
-                                                        {ELED_1, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 6, 1000},
-                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 5, 1000},
-                                                        {ELED_2, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 7, 1000},
+                                                        {ELED_1, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 6, 1000},
+                                                        {ELED_2, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 5, 1000},
+                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 7, 1000},
                                                         {ELED_2, {ECOLOR_OFF, ECOLOR_OFF, ECOLOR_ON}, 8, 1000}
                                                     };
-    //ELedColor eColor = msBlinkParams[0].eColor;
     bool fRiseColor = true;
-    
-    //nrfx_systick_state_t systickState;
-    //uint32_t  testVal = 1000;
-
-    //ELedColor eColor2 = ECOLOR_BLUE;
-
-    //uint32_t  testVal2 = 100;
-    //nrfx_systick_state_t systickState2;
-    //SLedColors sColors;
     SLedPwmTimeParams sLedTimeParams = {0,0,0};
-    //SLedPwmTimeParams sLedTimeParams2;
-
-    //pca10059_leds_init();
-    pca10059_button_init();
-    logs_init();
-
-    //sColors.eGreenState     = ECOLOR_OFF;
-    //sColors.eRedState       = ECOLOR_ON;
-    //sColors.eBlueState      = ECOLOR_OFF;
-
-    //pca10059_LedSetColor(ELED_2, &sColors);
-
-    //nrfx_systick_init();
-
-    //nrfx_systick_get(&systickState);
-    //nrfx_systick_get(&systickState2);
 
     Spca10059_led_pwm sLed1PWM;
     Spca10059_led_pwm sLed2PWM;
+
+    pca10059_button_init();
+    logs_init();
 
     pca10059_led_pwm_init(&sLed1PWM, LED_PWM_PERIOD_US, ELED_1);
     pca10059_led_pwm_init(&sLed2PWM, LED_PWM_PERIOD_US, ELED_2);
@@ -160,7 +104,7 @@ int main(void)
             if(unTotalTime == msBlinkParams[i].BlinkTimems)
             {
                 fRiseColor = false;
-                //eColor = ECOLOR_OFF;
+                log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
             else if (unTotalTime == 2 * msBlinkParams[i].BlinkTimems)
             {
@@ -179,7 +123,7 @@ int main(void)
                 }
 
                 fRiseColor = true;
-                //eColor = msBlinkParams[i].eColor;
+                log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
 
             if(msBlinkParams[i].sColor.eGreenState == ECOLOR_ON)
@@ -203,11 +147,8 @@ int main(void)
                 if(fRiseColor)
                     sLedTimeParams.unRedTOnUsec += LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
                 else
-                    sLedTimeParams.unBlueTOnUsec -= LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
+                    sLedTimeParams.unRedTOnUsec -= LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
             }
-                //ChangeColor = !ChangeColor; 
-                //log_led_color(msBlinkParams[i].eLed, eColor);
-                //pca10059_LedSetColor(msBlinkParams[i].eLed, eColor);
             
             if(msBlinkParams[i].eLed == ELED_1)
                 pca10059_led_pwm_set_params(&sLed1PWM, &sLedTimeParams);

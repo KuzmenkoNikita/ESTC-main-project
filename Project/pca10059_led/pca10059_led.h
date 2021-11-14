@@ -1,7 +1,9 @@
+#include <stdint.h>
+
 #ifndef PCA10059_LED
 #define PCA10059_LED
 
-#include <stdint.h>
+
 
 /** @brief Enumerator used for selecting color */
 typedef enum
@@ -13,8 +15,8 @@ typedef enum
 /** @brief struct for color components */
 typedef struct 
 {
-    ELedStete   eGreenState;
     ELedStete   eRedState;
+    ELedStete   eGreenState;
     ELedStete   eBlueState;
 }SLedColors;
 
