@@ -45,9 +45,22 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
 
     switch(eLed)
     {
-        case ELED_1: LedNum = 1; break;
-        case ELED_2: LedNum = 2; break;
-        default: NRF_LOG_INFO("Uknown LED coolor \n"); return;
+        case ELED_1: 
+        {
+            LedNum = 1; 
+            break;
+        }
+        case ELED_2: 
+        {
+            LedNum = 2;
+            break;
+        }
+
+        default: 
+        {
+            NRF_LOG_INFO("Uknown LED coolor \n"); 
+            return;
+        }
     }
 
     if(fRiseColor)
