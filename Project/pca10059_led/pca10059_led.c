@@ -24,12 +24,19 @@ void pca10059_leds_init(void)
 }
 
 /* *********************************************** */
-int pca10059_LedSetColor(ELedNum eLedNum, ELedColor eColor)
+int pca10059_LedSetColor(ELedNum eLedNum, SLedColors* psColor)
 {
     unsigned unGrenState = 0;
     unsigned unRedState = 0;
     unsigned unBlueState = 0;
 
+    if(!psColor)
+        return -1;
+
+    unBlueState = psColor->eBlueState   == ECOLOR_ON ? 0 : 1;
+    unGrenState = psColor->eGreenState  == ECOLOR_ON ? 0 : 1;
+    unRedState  = psColor->eRedState    == ECOLOR_ON ? 0 : 1;
+#if 0
     switch(eColor)
     {
         case ECOLOR_OFF:
@@ -73,11 +80,11 @@ int pca10059_LedSetColor(ELedNum eLedNum, ELedColor eColor)
         }
         default: return -1;  
     }
-
+#endif
     if(eLedNum == ELED_1)
     {
-        if(eColor != ECOLOR_OFF && eColor != ECOLOR_GREEN)
-            return -1;
+        //if(eColor != ECOLOR_OFF && eColor != ECOLOR_GREEN)
+            //return -1;
 
         nrf_gpio_pin_write(PCA10059_LED1_GREEN_PIN, unGrenState);
     }

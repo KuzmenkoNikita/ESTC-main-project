@@ -1,14 +1,23 @@
+#ifndef PCA10059_LED
+#define PCA10059_LED
+
 #include <stdint.h>
 
 /** @brief Enumerator used for selecting color */
 typedef enum
 {
     ECOLOR_OFF,
-    ECOLOR_GREEN,
-    ECOLOR_RED,
-    ECOLOR_BLUE,
-    ECOLOR_ORANGE,
-}ELedColor;
+    ECOLOR_ON
+}ELedStete;
+
+/** @brief struct for color components */
+typedef struct 
+{
+    ELedStete   eGreenState;
+    ELedStete   eRedState;
+    ELedStete   eBlueState;
+}SLedColors;
+
 
 /** @brief Enumerator used for selecting LED */
 typedef enum
@@ -25,7 +34,9 @@ void pca10059_leds_init(void);
  * @brief Set color LED function
  *
  * @param eLedNum       Specifies the LED
- * @param eColor        LED color
+ * @param psColor       pointer to color components struct
  * @return 0 if OK, -1 if LED doesn't support color
  */
-int pca10059_LedSetColor(ELedNum eLedNum, ELedColor eColor);
+int pca10059_LedSetColor(ELedNum eLedNum, SLedColors* psColor);
+
+#endif

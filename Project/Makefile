@@ -50,6 +50,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power.c \
   $(SDK_ROOT)/components/libraries/usbd/app_usbd_string_desc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_systick.c \
+  $(PROJ_DIR)/pca10059_led/pwm/pca10059_led_pwm.c \
   
 
 # Include folders common to all targets
@@ -88,6 +89,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/atomic_fifo \
   $(SDK_ROOT)/external/utf_converter \
   $(SDK_ROOT)/modules/nrfx/drivers/include \
+  $(PROJ_DIR)/pca10059_led/pwm/ \
 
 # Libraries common to all targets
 LIB_FILES += \
