@@ -918,9 +918,9 @@
 
 // <e> GPIOTE_ENABLED - nrf_drv_gpiote - GPIOTE peripheral driver - legacy layer
 //==========================================================
-#ifndef GPIOTE_ENABLED
-#define GPIOTE_ENABLED 0
-#endif
+//#ifndef GPIOTE_ENABLED
+//#define GPIOTE_ENABLED 0
+//#endif
 // <o> GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS - Number of lower power input pins 
 #ifndef GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS
 #define GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS 4
@@ -10049,6 +10049,12 @@
 
 #ifndef NRF_LOG_STR_FORMATTER_TIMESTAMP_FORMAT_ENABLED
 #define NRF_LOG_STR_FORMATTER_TIMESTAMP_FORMAT_ENABLED 1
+#endif
+
+// <e> NRFX_GPIOTE_ENABLED - nrfx_gpiote - GPIOTE peripheral driver
+//==========================================================
+#ifndef NRFX_GPIOTE_ENABLED
+#define NRFX_GPIOTE_ENABLED 1
 #endif
 
 // </h> 

@@ -78,13 +78,23 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
     }
 }
 
+void ButtonHandler(eBtnState eState, void* pData)
+{
+    if(pData)
+    {
+        
+        uint32_t* pCnt = (uint32_t*)pData;
+        ++(*pCnt);
+        NRF_LOG_INFO("Pressed CNT %d", *pCnt); 
+    } 
+}
 
 /**
  * @brief Function for application main entry.
  */
 int main(void)
 {
-    
+    uint32_t unPressBtnCnt = 0;
     unsigned int unTotalTimeUs = 0;
     unsigned int i = 0;
     unsigned int unBlinkCnt = 0;
@@ -98,12 +108,21 @@ int main(void)
     bool fRiseColor = true;
     SLedPwmTimeParams sLedTimeParams = {0,0,0};
     uint32_t unPWMStep = 0;
-
+    bool fEnState = false;
     Spca10059_led_pwm sLed1PWM;
     Spca10059_led_pwm sLed2PWM;
 
-    pca10059_button_init();
+    SBtnIRQParams sBtnIrq;
+
+    sBtnIrq.eBtnIrqState = BTN_PRESSED;
+    sBtnIrq.fnBtnHandler = ButtonHandler;
+    sBtnIrq.pUserData = (void*)&unPressBtnCnt;
+
+    pca10059_button_init(&sBtnIrq);
+    pca10059_button_enable_irq();
     logs_init();
+
+
 
     pca10059_led_pwm_init(&sLed1PWM, LED_PWM_PERIOD_US, ELED_1);
     pca10059_led_pwm_init(&sLed2PWM, LED_PWM_PERIOD_US, ELED_2);
@@ -117,10 +136,16 @@ int main(void)
 
     while(1)
     {
+        if(unPressBtnCnt == 2)
+        {
+            unPressBtnCnt = 0;
+            fEnState = !fEnState;
+        }
+
         pca10059_led_pwm_process(&sLed1PWM);
         pca10059_led_pwm_process(&sLed2PWM);
 
-        if(BTN_PRESSED == pca10059_GetButtonState())
+        if(/*BTN_PRESSED == pca10059_GetButtonState()*/fEnState)
         {
             if(unTotalTimeUs == 1000 * msBlinkParams[i].BlinkTimeMs)
             {
