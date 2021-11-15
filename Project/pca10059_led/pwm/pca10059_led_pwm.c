@@ -69,7 +69,9 @@ void pca10059_led_pwm_process(Spca10059_led_pwm* psLedPwm)
             }
         }
         else
+        {
             psLedPwm->sColorPwmParams[i].eLedState = ECOLOR_OFF;
+        }
     }
     
     sColors.eBlueState  = psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].eLedState;

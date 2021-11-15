@@ -16,7 +16,7 @@
 #include "pca10059_led_pwm.h"
 
 #define PCA10059_DEVID_SIZE     4
-#define LED_PWM_PERIOD_US       20000
+#define LED_PWM_PERIOD_US       1000
 
 /** @brief Blinking params */
 typedef struct
@@ -24,9 +24,14 @@ typedef struct
     ELedNum     eLed;
     SLedColors  sColor;
     uint32_t    BlinksCnt;
-    uint32_t    BlinkTimems;
+    uint32_t    BlinkTimeMs;
 }SBlinkParams;
 
+typedef struct 
+{
+    ELedStete   eledState;
+    uint32_t*   pTimeOn;
+}SOneColorPwm;
 
 /**
  * @brief Init logs
@@ -68,7 +73,9 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
         NRF_LOG_INFO("LED %d stated turning on \n", LedNum);
     }
     else
+    {
         NRF_LOG_INFO("LED %d stated turning off \n", LedNum); 
+    }
 }
 
 
@@ -78,7 +85,7 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
 int main(void)
 {
     
-    unsigned int unTotalTime = 0;
+    unsigned int unTotalTimeUs = 0;
     unsigned int i = 0;
     unsigned int unBlinkCnt = 0;
     SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
@@ -90,6 +97,7 @@ int main(void)
                                                     };
     bool fRiseColor = true;
     SLedPwmTimeParams sLedTimeParams = {0,0,0};
+    uint32_t unPWMStep = 0;
 
     Spca10059_led_pwm sLed1PWM;
     Spca10059_led_pwm sLed2PWM;
@@ -114,14 +122,14 @@ int main(void)
 
         if(BTN_PRESSED == pca10059_GetButtonState())
         {
-            if(unTotalTime == msBlinkParams[i].BlinkTimems)
+            if(unTotalTimeUs == 1000 * msBlinkParams[i].BlinkTimeMs)
             {
                 fRiseColor = false;
                 log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
-            else if (unTotalTime == 2 * msBlinkParams[i].BlinkTimems)
+            else if (unTotalTimeUs == 2*1000 * msBlinkParams[i].BlinkTimeMs)
             {
-                unTotalTime = 0;
+                unTotalTimeUs = 0;
                 ++unBlinkCnt;
                 if(unBlinkCnt == msBlinkParams[i].BlinksCnt)
                 {
@@ -139,28 +147,19 @@ int main(void)
                 log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
 
-            if(msBlinkParams[i].sColor.eGreenState == ECOLOR_ON)
-            {
-                if(fRiseColor)
-                    sLedTimeParams.unGreenTOnUsec += LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
-                else
-                    sLedTimeParams.unGreenTOnUsec -= LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
-            }
+            unPWMStep = (1000 * msBlinkParams[i].BlinkTimeMs) / LED_PWM_PERIOD_US;
 
-            if(msBlinkParams[i].sColor.eBlueState == ECOLOR_ON)
+            if(unTotalTimeUs % unPWMStep == 0)
             {
-                if(fRiseColor)
-                    sLedTimeParams.unBlueTOnUsec += LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
-                else
-                    sLedTimeParams.unBlueTOnUsec -= LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
-            }
-
-            if(msBlinkParams[i].sColor.eRedState == ECOLOR_ON)
-            {
-                if(fRiseColor)
-                    sLedTimeParams.unRedTOnUsec += LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
-                else
-                    sLedTimeParams.unRedTOnUsec -= LED_PWM_PERIOD_US / msBlinkParams[i].BlinkTimems;
+                unsigned j = 0;
+                SOneColorPwm msParams[PWM_COUNTOF_LED_COLORS] = {
+                                                                    {msBlinkParams[i].sColor.eGreenState, &sLedTimeParams.unGreenTOnUsec},
+                                                                    {msBlinkParams[i].sColor.eBlueState, &sLedTimeParams.unBlueTOnUsec},
+                                                                    {msBlinkParams[i].sColor.eRedState, &sLedTimeParams.unRedTOnUsec},
+                                                                };
+                for(j = 0; j < PWM_COUNTOF_LED_COLORS; ++j)
+                    if(msParams[j].eledState == ECOLOR_ON)
+                        *msParams[j].pTimeOn = fRiseColor ? (*msParams[j].pTimeOn) + 1 : (*msParams[j].pTimeOn ) - 1;
             }
             
             if(msBlinkParams[i].eLed == ELED_1)
@@ -168,9 +167,9 @@ int main(void)
             else
                 pca10059_led_pwm_set_params(&sLed2PWM, &sLedTimeParams);
 
-            nrf_delay_ms(1);
+            nrf_delay_us(100);
 
-            ++unTotalTime;
+            unTotalTimeUs+=100;
         }
         
         LOG_BACKEND_USB_PROCESS();
