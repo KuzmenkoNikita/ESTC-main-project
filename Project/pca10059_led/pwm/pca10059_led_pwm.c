@@ -1,5 +1,5 @@
 #include "pca10059_led_pwm.h"
-
+#include <stdlib.h>
 
 typedef enum
 {
@@ -35,21 +35,9 @@ void pca10059_led_pwm_set_params(Spca10059_led_pwm* psLedPwm, const SLedPwmTimeP
     if(!psLedPwm || !psParams)
         return;
 
-    if(psParams->unBlueTOnUsec > psLedPwm->PeriodUsec)
-        psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].unTimeOnUsec = psLedPwm->PeriodUsec;
-    else
-         psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].unTimeOnUsec = psParams->unBlueTOnUsec;
-
-    if(psParams->unGreenTOnUsec > psLedPwm->PeriodUsec)
-         psLedPwm->sColorPwmParams[PWM_COLOR_GREEN].unTimeOnUsec = psLedPwm->PeriodUsec;
-    else
-         psLedPwm->sColorPwmParams[PWM_COLOR_GREEN].unTimeOnUsec = psParams->unGreenTOnUsec;
-
-    if(psParams->unRedTOnUsec > psLedPwm->PeriodUsec)
-         psLedPwm->sColorPwmParams[PWM_COLOR_RED].unTimeOnUsec = psLedPwm->PeriodUsec;
-    else
-         psLedPwm->sColorPwmParams[PWM_COLOR_RED].unTimeOnUsec = psParams->unRedTOnUsec;
-    
+    psLedPwm->sColorPwmParams[PWM_COLOR_BLUE].unTimeOnUsec  = MIN (psParams->unBlueTOnUsec, psLedPwm->PeriodUsec);
+    psLedPwm->sColorPwmParams[PWM_COLOR_GREEN].unTimeOnUsec = MIN (psParams->unGreenTOnUsec, psLedPwm->PeriodUsec);
+    psLedPwm->sColorPwmParams[PWM_COLOR_RED].unTimeOnUsec   = MIN (psParams->unRedTOnUsec, psLedPwm->PeriodUsec);
 }
 /* **************************************************** */
 void pca10059_led_pwm_process(Spca10059_led_pwm* psLedPwm)
