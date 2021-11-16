@@ -18,6 +18,8 @@
 #define PCA10059_DEVID_SIZE     4
 #define LED_PWM_PERIOD_US       1000
 
+#define CONVERT_MS2US(ms) (1000 * (ms))
+
 /** @brief Blinking params */
 typedef struct
 {
@@ -32,6 +34,13 @@ typedef struct
     ELedStete   eledState;
     uint32_t*   pTimeOn;
 }SOneColorPwm;
+
+typedef struct
+{
+    nrfx_systick_state_t    sDebounceSystick;
+    uint32_t             unPressCnt;
+}SDebounceParams;
+
 
 /**
  * @brief Init logs
@@ -82,10 +91,13 @@ void ButtonHandler(eBtnState eState, void* pData)
 {
     if(pData)
     {
-        
-        uint32_t* pCnt = (uint32_t*)pData;
-        ++(*pCnt);
-        NRF_LOG_INFO("Pressed CNT %d", *pCnt); 
+        SDebounceParams* psParams = (SDebounceParams*)pData;
+        psParams->unPressCnt++;
+        if(psParams->unPressCnt == 1)
+            nrfx_systick_get(&psParams->sDebounceSystick);
+
+        //pca10059_button_disable_irq();
+        NRF_LOG_INFO("!!!! IRQ !!!!! Pressed CNT %d", psParams->unPressCnt); 
     } 
 }
 
@@ -94,7 +106,6 @@ void ButtonHandler(eBtnState eState, void* pData)
  */
 int main(void)
 {
-    uint32_t unPressBtnCnt = 0;
     unsigned int unTotalTimeUs = 0;
     unsigned int i = 0;
     unsigned int unBlinkCnt = 0;
@@ -112,17 +123,21 @@ int main(void)
     Spca10059_led_pwm sLed1PWM;
     Spca10059_led_pwm sLed2PWM;
 
-    SBtnIRQParams sBtnIrq;
+    SDebounceParams sBtnIqrParams;
+    sBtnIqrParams.unPressCnt = 0;
 
+    SBtnIRQParams sBtnIrq;
+    uint32_t unRealPressCnt = 0;
+    
     sBtnIrq.eBtnIrqState = BTN_PRESSED;
     sBtnIrq.fnBtnHandler = ButtonHandler;
-    sBtnIrq.pUserData = (void*)&unPressBtnCnt;
+    sBtnIrq.pUserData = (void*)&sBtnIqrParams;
+
+    nrfx_systick_init();
 
     pca10059_button_init(&sBtnIrq);
     pca10059_button_enable_irq();
     logs_init();
-
-
 
     pca10059_led_pwm_init(&sLed1PWM, LED_PWM_PERIOD_US, ELED_1);
     pca10059_led_pwm_init(&sLed2PWM, LED_PWM_PERIOD_US, ELED_2);
@@ -136,10 +151,24 @@ int main(void)
 
     while(1)
     {
-        if(unPressBtnCnt == 2)
+        if(sBtnIqrParams.unPressCnt)
         {
-            unPressBtnCnt = 0;
-            fEnState = !fEnState;
+            //NRF_LOG_INFO("press CNT %d", sBtnIqrParams.unPressCnt); 
+            if(nrfx_systick_test(&sBtnIqrParams.sDebounceSystick, 150000))
+            { 
+                ++unRealPressCnt;
+                NRF_LOG_INFO("Debounce timeout elapsed RealCNT: %u", unRealPressCnt);
+                sBtnIqrParams.unPressCnt = 0;
+                //pca10059_button_enable_irq();
+
+                if(unRealPressCnt == 2)
+                {
+                    NRF_LOG_INFO("DoubleClick");
+                    unRealPressCnt = 0;
+                    sBtnIqrParams.unPressCnt = 0;
+                    fEnState = !fEnState;
+                }
+            }
         }
 
         pca10059_led_pwm_process(&sLed1PWM);
@@ -147,12 +176,12 @@ int main(void)
 
         if(/*BTN_PRESSED == pca10059_GetButtonState()*/fEnState)
         {
-            if(unTotalTimeUs == 1000 * msBlinkParams[i].BlinkTimeMs)
+            if(unTotalTimeUs == CONVERT_MS2US(msBlinkParams[i].BlinkTimeMs))
             {
                 fRiseColor = false;
-                log_led_color(msBlinkParams[i].eLed, fRiseColor);
+                //log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
-            else if (unTotalTimeUs == 2*1000 * msBlinkParams[i].BlinkTimeMs)
+            else if (unTotalTimeUs == 2*(CONVERT_MS2US (msBlinkParams[i].BlinkTimeMs)))
             {
                 unTotalTimeUs = 0;
                 ++unBlinkCnt;
@@ -169,10 +198,10 @@ int main(void)
                 }
 
                 fRiseColor = true;
-                log_led_color(msBlinkParams[i].eLed, fRiseColor);
+                //log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
 
-            unPWMStep = (1000 * msBlinkParams[i].BlinkTimeMs) / LED_PWM_PERIOD_US;
+            unPWMStep = CONVERT_MS2US(msBlinkParams[i].BlinkTimeMs)) / LED_PWM_PERIOD_US;
 
             if(unTotalTimeUs % unPWMStep == 0)
             {
