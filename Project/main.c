@@ -201,7 +201,7 @@ int main(void)
                 //log_led_color(msBlinkParams[i].eLed, fRiseColor);
             }
 
-            unPWMStep = CONVERT_MS2US(msBlinkParams[i].BlinkTimeMs)) / LED_PWM_PERIOD_US;
+            unPWMStep = CONVERT_MS2US(msBlinkParams[i].BlinkTimeMs) / LED_PWM_PERIOD_US;
 
             if(unTotalTimeUs % unPWMStep == 0)
             {
