@@ -38,10 +38,10 @@ void pca10059_button_init(SBtnIRQParams* psInitParams)
         else
             sConf.sense = NRF_GPIOTE_POLARITY_LOTOHI;
 
-        sConf.pull = NRF_GPIO_PIN_NOPULL;                   
-        sConf.is_watcher = false;                           
-        sConf.hi_accuracy = false;                         
-        sConf.skip_gpio_setup = false;
+        sConf.pull              = NRF_GPIO_PIN_PULLUP;                   
+        sConf.is_watcher        = false;                           
+        sConf.hi_accuracy       = false;                         
+        sConf.skip_gpio_setup   = false;
 
         nrfx_gpiote_in_init	(PCA10059_BUTTON_PIN, &sConf, pca10059_button_handler);
     }
@@ -57,22 +57,10 @@ eBtnState pca10059_GetButtonState(void)
 /* ****************************************** */
 void pca10059_button_enable_irq(void)
 {
-    nrfx_gpiote_in_config_t sConf;
-
-
-    sConf.sense = NRF_GPIOTE_POLARITY_HITOLO;
-    sConf.pull = NRF_GPIO_PIN_NOPULL;                   
-    sConf.is_watcher = false;                           
-    sConf.hi_accuracy = false;                         
-    sConf.skip_gpio_setup = false;
-
-    nrfx_gpiote_in_init	(PCA10059_BUTTON_PIN, &sConf, pca10059_button_handler);
-
-     nrfx_gpiote_in_event_enable(PCA10059_BUTTON_PIN, true);
+    nrfx_gpiote_in_event_enable(PCA10059_BUTTON_PIN, true);
 }
 /* ****************************************** */
 void pca10059_button_disable_irq(void)
 {
      nrfx_gpiote_in_event_disable(PCA10059_BUTTON_PIN);
-     nrfx_gpiote_in_uninit(PCA10059_BUTTON_PIN);
 }

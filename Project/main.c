@@ -39,6 +39,7 @@ typedef struct
 {
     nrfx_systick_state_t    sDebounceSystick;
     uint32_t             unPressCnt;
+    bool                   fLowElapsed;
 }SDebounceParams;
 
 
@@ -87,17 +88,57 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
     }
 }
 
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
+{
+    NRF_LOG_INFO("!!!!!!!!!!!!!!!! \n"); 
+}
+
 void ButtonHandler(eBtnState eState, void* pData)
 {
     if(pData)
     {
+        
         SDebounceParams* psParams = (SDebounceParams*)pData;
+
+        //NRF_LOG_INFO("!!!! IRQ  ENTER FUNC !!!!! Pressed CNT %d", psParams->unPressCnt); 
+
         psParams->unPressCnt++;
+
         if(psParams->unPressCnt == 1)
             nrfx_systick_get(&psParams->sDebounceSystick);
 
-        //pca10059_button_disable_irq();
-        NRF_LOG_INFO("!!!! IRQ !!!!! Pressed CNT %d", psParams->unPressCnt); 
+        if(psParams->unPressCnt > 1)
+        {
+            //bool fLowTimeoutElapsed = false;
+            //bool fHiTimeoutElapsed = false;
+            psParams->fLowElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 30000);
+            //fHiTimeoutElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 130000);
+
+            if (!psParams->fLowElapsed)
+            {
+                --psParams->unPressCnt;
+            }
+            //NRF_LOG_INFO("!!!! IRQ !!!!! LoTimeout %u, HiTimeout %u", fLowTimeoutElapsed, fHiTimeoutElapsed);
+#if 0
+            if(fLowTimeoutElapsed && !fHiTimeoutElapsed)
+            {
+                psParams->unPressCnt = 0;
+                NRF_LOG_INFO("!!!! IRQ !!!!! DOUBLE click");
+            }
+            else if (fLowTimeoutElapsed && fHiTimeoutElapsed)
+            {
+                /* Let it be first click */
+                NRF_LOG_INFO("!!!! IRQ !!!!! TOO LATE CLICK");
+                psParams->unPressCnt = 1;
+                nrfx_systick_get(&psParams->sDebounceSystick);
+            }
+            else
+            {
+                NRF_LOG_INFO("!!!! IRQ !!!!!  Other LoTimeout %u, HiTimeout %u", fLowTimeoutElapsed, fHiTimeoutElapsed);
+            }
+ #endif
+        }
+
     } 
 }
 
@@ -122,12 +163,13 @@ int main(void)
     bool fEnState = false;
     Spca10059_led_pwm sLed1PWM;
     Spca10059_led_pwm sLed2PWM;
+    uint32_t unBtnTimeCnt = 0;
 
     SDebounceParams sBtnIqrParams;
     sBtnIqrParams.unPressCnt = 0;
 
     SBtnIRQParams sBtnIrq;
-    uint32_t unRealPressCnt = 0;
+    //uint32_t unRealPressCnt = 0;
     
     sBtnIrq.eBtnIrqState = BTN_PRESSED;
     sBtnIrq.fnBtnHandler = ButtonHandler;
@@ -151,24 +193,26 @@ int main(void)
 
     while(1)
     {
-        if(sBtnIqrParams.unPressCnt)
+        
+        if(sBtnIqrParams.unPressCnt > 0)
         {
-            //NRF_LOG_INFO("press CNT %d", sBtnIqrParams.unPressCnt); 
-            if(nrfx_systick_test(&sBtnIqrParams.sDebounceSystick, 150000))
-            { 
-                ++unRealPressCnt;
-                NRF_LOG_INFO("Debounce timeout elapsed RealCNT: %u", unRealPressCnt);
+            
+            nrf_delay_us(5);
+            unBtnTimeCnt += 5;
+            if(sBtnIqrParams.unPressCnt == 1 && unBtnTimeCnt > 300000)
+            {
+                unBtnTimeCnt = 0;
+                NRF_LOG_INFO("Skip click"); 
                 sBtnIqrParams.unPressCnt = 0;
-                //pca10059_button_enable_irq();
-
-                if(unRealPressCnt == 2)
-                {
-                    NRF_LOG_INFO("DoubleClick");
-                    unRealPressCnt = 0;
-                    sBtnIqrParams.unPressCnt = 0;
-                    fEnState = !fEnState;
-                }
             }
+            else if (sBtnIqrParams.unPressCnt == 2 && unBtnTimeCnt < 300000)
+            {
+                unBtnTimeCnt = 0;
+                NRF_LOG_INFO("Double CLick"); 
+                fEnState = !fEnState;
+                sBtnIqrParams.unPressCnt = 0;
+            }
+
         }
 
         pca10059_led_pwm_process(&sLed1PWM);
@@ -221,9 +265,9 @@ int main(void)
             else
                 pca10059_led_pwm_set_params(&sLed2PWM, &sLedTimeParams);
 
-            nrf_delay_us(100);
+            nrf_delay_us(5);
 
-            unTotalTimeUs+=100;
+            unTotalTimeUs+=5;
         }
         
         LOG_BACKEND_USB_PROCESS();
