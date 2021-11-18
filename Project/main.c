@@ -88,19 +88,12 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
     }
 }
 
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
-{
-    NRF_LOG_INFO("!!!!!!!!!!!!!!!! \n"); 
-}
-
 void ButtonHandler(eBtnState eState, void* pData)
 {
     if(pData)
     {
         
-        SDebounceParams* psParams = (SDebounceParams*)pData;
-
-        //NRF_LOG_INFO("!!!! IRQ  ENTER FUNC !!!!! Pressed CNT %d", psParams->unPressCnt); 
+        SDebounceParams* psParams = (SDebounceParams*)pData; 
 
         psParams->unPressCnt++;
 
@@ -109,34 +102,11 @@ void ButtonHandler(eBtnState eState, void* pData)
 
         if(psParams->unPressCnt > 1)
         {
-            //bool fLowTimeoutElapsed = false;
-            //bool fHiTimeoutElapsed = false;
             psParams->fLowElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 30000);
-            //fHiTimeoutElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 130000);
-
             if (!psParams->fLowElapsed)
             {
                 --psParams->unPressCnt;
             }
-            //NRF_LOG_INFO("!!!! IRQ !!!!! LoTimeout %u, HiTimeout %u", fLowTimeoutElapsed, fHiTimeoutElapsed);
-#if 0
-            if(fLowTimeoutElapsed && !fHiTimeoutElapsed)
-            {
-                psParams->unPressCnt = 0;
-                NRF_LOG_INFO("!!!! IRQ !!!!! DOUBLE click");
-            }
-            else if (fLowTimeoutElapsed && fHiTimeoutElapsed)
-            {
-                /* Let it be first click */
-                NRF_LOG_INFO("!!!! IRQ !!!!! TOO LATE CLICK");
-                psParams->unPressCnt = 1;
-                nrfx_systick_get(&psParams->sDebounceSystick);
-            }
-            else
-            {
-                NRF_LOG_INFO("!!!! IRQ !!!!!  Other LoTimeout %u, HiTimeout %u", fLowTimeoutElapsed, fHiTimeoutElapsed);
-            }
- #endif
         }
 
     } 
@@ -169,7 +139,6 @@ int main(void)
     sBtnIqrParams.unPressCnt = 0;
 
     SBtnIRQParams sBtnIrq;
-    //uint32_t unRealPressCnt = 0;
     
     sBtnIrq.eBtnIrqState = BTN_PRESSED;
     sBtnIrq.fnBtnHandler = ButtonHandler;
