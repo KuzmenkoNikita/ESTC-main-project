@@ -12,34 +12,21 @@
 #include "app_usbd.h"
 #include "app_usbd_serial_num.h"
 #include "nrfx_systick.h"
-
+#include <nrfx_timer.h>
 #include "pca10059_led_pwm.h"
 
-#define PCA10059_DEVID_SIZE     4
+#include "pca10059_LedsBlinkByParams.h"
+
+
 #define LED_PWM_PERIOD_US       1000
 
-#define CONVERT_MS2US(ms) (1000 * (ms))
-
-/** @brief Blinking params */
-typedef struct
-{
-    ELedNum     eLed;
-    SLedColors  sColor;
-    uint32_t    BlinksCnt;
-    uint32_t    BlinkTimeMs;
-}SBlinkParams;
-
-typedef struct 
-{
-    ELedStete   eledState;
-    uint32_t*   pTimeOn;
-}SOneColorPwm;
 
 typedef struct
 {
     nrfx_systick_state_t    sDebounceSystick;
     uint32_t             unPressCnt;
     bool                   fLowElapsed;
+    
 }SDebounceParams;
 
 
@@ -88,27 +75,82 @@ void log_led_color(ELedNum eLed,  bool fRiseColor)
     }
 }
 
+void assert_nrf_callback(uint16_t line_num, const uint8_t * file_name)
+{
+    NRF_LOG_INFO(" ASSERT !!!!!"); 
+}
+
+
 void ButtonHandler(eBtnState eState, void* pData)
 {
+    bool fHiHiElapsed = false;
+
     if(pData)
     {
-        
+        NRF_LOG_INFO("BTN PRESSED!!!!!!!!!!!!!!!!!!!!!");
         SDebounceParams* psParams = (SDebounceParams*)pData; 
 
-        psParams->unPressCnt++;
+             psParams->unPressCnt++;
 
+            fHiHiElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 10);
+            if(fHiHiElapsed)
+            {
+                nrfx_systick_get(&psParams->sDebounceSystick);
+                psParams->unPressCnt = 1;
+                NRF_LOG_INFO("time Hi");
+            }
+            else
+            {
+                NRF_LOG_INFO("FATAL ERROR FATAL ERROR");
+            }
+
+#if 0
         if(psParams->unPressCnt == 1)
+        {
+            NRF_LOG_INFO("First Click!");
             nrfx_systick_get(&psParams->sDebounceSystick);
+        }
 
         if(psParams->unPressCnt > 1)
         {
-            psParams->fLowElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 30000);
-            if (!psParams->fLowElapsed)
+            //bool fHiElapsed = false;
+            bool fHiHiElapsed = false;
+            
+            fHiHiElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 120000);
+            if(fHiHiElapsed)
             {
-                --psParams->unPressCnt;
+                nrfx_systick_get(&psParams->sDebounceSystick);
+                psParams->unPressCnt = 1;
+                NRF_LOG_INFO("Too late click");
+                return;
             }
-        }
+            else
+            {
+                NRF_LOG_INFO("Not Elapsed");
+            }
 
+            psParams->fLowElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 30000);
+            fHiElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 80000);
+
+            NRF_LOG_INFO(" Hi %d, Low %d", fHiElapsed, psParams->fLowElapsed); 
+
+        
+            if (psParams->fLowElapsed && fHiElapsed)
+            {
+                psParams->unPressCnt = 0;
+                NRF_LOG_INFO(" Double CLick!!!!");
+            }
+
+            //if (!psParams->fLowElapsed)
+            //{
+                //--psParams->unPressCnt;
+            //}
+        }
+        else
+        {
+            NRF_LOG_INFO("ELSE Cnt %u", psParams->unPressCnt);
+        }
+#endif
     } 
 }
 
@@ -117,27 +159,18 @@ void ButtonHandler(eBtnState eState, void* pData)
  */
 int main(void)
 {
-    unsigned int unTotalTimeUs = 0;
-    unsigned int i = 0;
-    unsigned int unBlinkCnt = 0;
+    
     SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
                                                     {
-                                                        {ELED_1, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 6, 1000},
-                                                        {ELED_2, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 5, 1000},
-                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 7, 1000},
-                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_OFF, ECOLOR_ON}, 8, 1000}
-                                                    };
-    bool fRiseColor = true;
-    SLedPwmTimeParams sLedTimeParams = {0,0,0};
-    uint32_t unPWMStep = 0;
-    bool fEnState = false;
-    Spca10059_led_pwm sLed1PWM;
-    Spca10059_led_pwm sLed2PWM;
-    uint32_t unBtnTimeCnt = 0;
+                                                        {ELED_1, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 6, 500, LED_PWM_PERIOD_US},
+                                                        {ELED_2, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 5, 500, LED_PWM_PERIOD_US},
+                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 7, 500, LED_PWM_PERIOD_US},
+                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_OFF, ECOLOR_ON}, 8, 500, LED_PWM_PERIOD_US}
+                                                    }; 
 
     SDebounceParams sBtnIqrParams;
     sBtnIqrParams.unPressCnt = 0;
-
+    SBlinkyInstance sInst;
     SBtnIRQParams sBtnIrq;
     
     sBtnIrq.eBtnIrqState = BTN_PRESSED;
@@ -148,97 +181,12 @@ int main(void)
 
     pca10059_button_init(&sBtnIrq);
     pca10059_button_enable_irq();
-    logs_init();
 
-    pca10059_led_pwm_init(&sLed1PWM, LED_PWM_PERIOD_US, ELED_1);
-    pca10059_led_pwm_init(&sLed2PWM, LED_PWM_PERIOD_US, ELED_2);
-
-    sLedTimeParams.unGreenTOnUsec   = 0;
-    sLedTimeParams.unBlueTOnUsec    = 0;
-    sLedTimeParams.unRedTOnUsec     = 0;
-    
-    pca10059_led_pwm_set_params(&sLed1PWM, &sLedTimeParams);
-    pca10059_led_pwm_set_params(&sLed2PWM, &sLedTimeParams);
+    pca10059_BlinkByParams_init(&sInst, msBlinkParams, PCA10059_DEVID_SIZE);
 
     while(1)
     {
-        
-        if(sBtnIqrParams.unPressCnt > 0)
-        {
-            
-            nrf_delay_us(5);
-            unBtnTimeCnt += 5;
-            if(sBtnIqrParams.unPressCnt == 1 && unBtnTimeCnt > 300000)
-            {
-                unBtnTimeCnt = 0;
-                NRF_LOG_INFO("Skip click"); 
-                sBtnIqrParams.unPressCnt = 0;
-            }
-            else if (sBtnIqrParams.unPressCnt == 2 && unBtnTimeCnt < 300000)
-            {
-                unBtnTimeCnt = 0;
-                NRF_LOG_INFO("Double CLick"); 
-                fEnState = !fEnState;
-                sBtnIqrParams.unPressCnt = 0;
-            }
-
-        }
-
-        pca10059_led_pwm_process(&sLed1PWM);
-        pca10059_led_pwm_process(&sLed2PWM);
-
-        if(/*BTN_PRESSED == pca10059_GetButtonState()*/fEnState)
-        {
-            if(unTotalTimeUs == CONVERT_MS2US(msBlinkParams[i].BlinkTimeMs))
-            {
-                fRiseColor = false;
-                //log_led_color(msBlinkParams[i].eLed, fRiseColor);
-            }
-            else if (unTotalTimeUs == 2*(CONVERT_MS2US (msBlinkParams[i].BlinkTimeMs)))
-            {
-                unTotalTimeUs = 0;
-                ++unBlinkCnt;
-                if(unBlinkCnt == msBlinkParams[i].BlinksCnt)
-                {
-                    unBlinkCnt = 0;
-                    sLedTimeParams.unGreenTOnUsec = 0;
-                    sLedTimeParams.unBlueTOnUsec = 0;
-                    sLedTimeParams.unRedTOnUsec = 0;
-
-                    ++i;
-                    if(i == PCA10059_DEVID_SIZE)
-                        i = 0;
-                }
-
-                fRiseColor = true;
-                //log_led_color(msBlinkParams[i].eLed, fRiseColor);
-            }
-
-            unPWMStep = CONVERT_MS2US(msBlinkParams[i].BlinkTimeMs) / LED_PWM_PERIOD_US;
-
-            if(unTotalTimeUs % unPWMStep == 0)
-            {
-                unsigned j = 0;
-                SOneColorPwm msParams[PWM_COUNTOF_LED_COLORS] = {
-                                                                    {msBlinkParams[i].sColor.eGreenState, &sLedTimeParams.unGreenTOnUsec},
-                                                                    {msBlinkParams[i].sColor.eBlueState, &sLedTimeParams.unBlueTOnUsec},
-                                                                    {msBlinkParams[i].sColor.eRedState, &sLedTimeParams.unRedTOnUsec},
-                                                                };
-                for(j = 0; j < PWM_COUNTOF_LED_COLORS; ++j)
-                    if(msParams[j].eledState == ECOLOR_ON)
-                        *msParams[j].pTimeOn = fRiseColor ? (*msParams[j].pTimeOn) + 1 : (*msParams[j].pTimeOn ) - 1;
-            }
-            
-            if(msBlinkParams[i].eLed == ELED_1)
-                pca10059_led_pwm_set_params(&sLed1PWM, &sLedTimeParams);
-            else
-                pca10059_led_pwm_set_params(&sLed2PWM, &sLedTimeParams);
-
-            nrf_delay_us(5);
-
-            unTotalTimeUs+=5;
-        }
-        
+        pca10059_BlinkByParams_process(&sInst, true);
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }
