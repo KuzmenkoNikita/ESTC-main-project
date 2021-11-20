@@ -11,17 +11,17 @@ typedef struct
     uint32_t*   pTimeOn;
 }SOneColorPwm;
 
-void pca10059_BlinkByParams_init(SBlinkyInstance* psInstance, SBlinkParams* psBlinkyParams, uint32_t unMassSize)
+void pca10059_BlinkByParams_init(SBlinkyInstance* psInstance, uint32_t unLedsPwmPeriodUs, SBlinkParams* psBlinkyParams, uint32_t unMassSize)
 {
     if(!psInstance || !psBlinkyParams)
         return;
 
-    if(unMassSize > PCA10059_DEVID_SIZE)
+    if(unMassSize > BLINKING_MAX_PARAM_SIZE)
         return;
 
     memcpy(&psInstance->msBlinkParams, psBlinkyParams, sizeof(SBlinkParams) * unMassSize);
 
-    psInstance->unLedsPWMPeriodUs = psBlinkyParams->unLedsPWMPeriodUs;
+    psInstance->unLedsPWMPeriodUs = unLedsPwmPeriodUs;
     psInstance->unBlinkCnt = 0;
     psInstance->fRiseColor = true;
     psInstance->i = 0;

@@ -24,9 +24,9 @@
 typedef struct
 {
     nrfx_systick_state_t    sDebounceSystick;
-    uint32_t             unPressCnt;
-    bool                   fLowElapsed;
-    
+    uint32_t                unPressCnt;
+    bool                    fHIElapsed;
+    nrfx_timer_t*           psTmr;
 }SDebounceParams;
 
 
@@ -83,27 +83,49 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * file_name)
 
 void ButtonHandler(eBtnState eState, void* pData)
 {
-    bool fHiHiElapsed = false;
+    bool LowTimeoutElapsed = false;
 
     if(pData)
     {
         NRF_LOG_INFO("BTN PRESSED!!!!!!!!!!!!!!!!!!!!!");
         SDebounceParams* psParams = (SDebounceParams*)pData; 
+        psParams->unPressCnt++;
 
-             psParams->unPressCnt++;
+        if(psParams->unPressCnt == 1)
+        {
+            nrfx_systick_get(&psParams->sDebounceSystick);
+            nrfx_timer_enable(psParams->psTmr);
+        }
 
-            fHiHiElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 10);
-            if(fHiHiElapsed)
+        if(psParams->unPressCnt > 1)
+        {
+            LowTimeoutElapsed = nrfx_systick_test(&psParams->sDebounceSystick, 30000);
+            if(!LowTimeoutElapsed)
             {
                 nrfx_systick_get(&psParams->sDebounceSystick);
                 psParams->unPressCnt = 1;
-                NRF_LOG_INFO("time Hi");
             }
             else
             {
-                NRF_LOG_INFO("FATAL ERROR FATAL ERROR");
+                NRF_LOG_INFO("LOW ELAPSED !"); 
+                if(!psParams->fHIElapsed)
+                {
+                    NRF_LOG_INFO("!!! Double click !!!");
+                    nrfx_timer_disable(psParams->psTmr);
+                    psParams->fHIElapsed = false;
+                    psParams->unPressCnt = 0;
+                }
+                else
+                {
+                    NRF_LOG_INFO(" HI TMR ELAPSED ");
+                    nrfx_systick_get(&psParams->sDebounceSystick);
+                    nrfx_timer_enable(psParams->psTmr);
+                    psParams->fHIElapsed = false;
+                    psParams->unPressCnt = 1;
+                }
             }
-
+        }
+    }
 #if 0
         if(psParams->unPressCnt == 1)
         {
@@ -150,8 +172,30 @@ void ButtonHandler(eBtnState eState, void* pData)
         {
             NRF_LOG_INFO("ELSE Cnt %u", psParams->unPressCnt);
         }
-#endif
+
     } 
+#endif
+}
+
+void TimerHandler(nrf_timer_event_t event_type, void* p_context)
+{
+    SDebounceParams* sIrqParams = (SDebounceParams*)p_context;
+
+    switch (event_type)
+    {
+        case NRF_TIMER_EVENT_COMPARE0:
+        {
+            NRF_LOG_INFO("Timer IRQ COMPARE 0 !!!!!!");
+            nrfx_timer_disable(sIrqParams->psTmr);
+            sIrqParams->fHIElapsed = true;
+            //nrfx_timer_enable(sTmr);
+            break;
+        }
+
+        default:
+            //Do nothing.
+            break;
+    }
 }
 
 /**
@@ -160,33 +204,64 @@ void ButtonHandler(eBtnState eState, void* pData)
 int main(void)
 {
     
-    SBlinkParams msBlinkParams[PCA10059_DEVID_SIZE] = 
+    SBlinkParams msBlinkParams[BLINKING_MAX_PARAM_SIZE] = 
                                                     {
-                                                        {ELED_1, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 6, 500, LED_PWM_PERIOD_US},
-                                                        {ELED_2, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 5, 500, LED_PWM_PERIOD_US},
-                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 7, 500, LED_PWM_PERIOD_US},
-                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_OFF, ECOLOR_ON}, 8, 500, LED_PWM_PERIOD_US}
+                                                        {ELED_1, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 6, 500},
+                                                        {ELED_2, {ECOLOR_ON, ECOLOR_OFF, ECOLOR_OFF}, 5, 500},
+                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_ON, ECOLOR_OFF}, 7, 500},
+                                                        {ELED_2, {ECOLOR_OFF, ECOLOR_OFF, ECOLOR_ON}, 8, 500}
                                                     }; 
 
     SDebounceParams sBtnIqrParams;
     sBtnIqrParams.unPressCnt = 0;
     SBlinkyInstance sInst;
     SBtnIRQParams sBtnIrq;
-    
+    bool fPressed = false;
+    uint32_t err_code = NRF_SUCCESS;
+    uint32_t unTick = 0;
+
+    nrfx_timer_t sTmr = NRFX_TIMER_INSTANCE(0);
+    nrfx_timer_config_t sTmrCfg = NRFX_TIMER_DEFAULT_CONFIG;
+
+    sBtnIqrParams.psTmr = &sTmr;
+    sBtnIqrParams.fHIElapsed = false;
+
+    sTmrCfg.p_context = &sBtnIqrParams;
+    sTmrCfg.frequency = NRF_TIMER_FREQ_1MHz;
+    sTmrCfg.bit_width = NRF_TIMER_BIT_WIDTH_32;
+
+
     sBtnIrq.eBtnIrqState = BTN_PRESSED;
     sBtnIrq.fnBtnHandler = ButtonHandler;
     sBtnIrq.pUserData = (void*)&sBtnIqrParams;
 
     nrfx_systick_init();
+    logs_init();
 
     pca10059_button_init(&sBtnIrq);
     pca10059_button_enable_irq();
 
-    pca10059_BlinkByParams_init(&sInst, msBlinkParams, PCA10059_DEVID_SIZE);
+    err_code = nrfx_timer_init(&sTmr, &sTmrCfg, TimerHandler);
+    APP_ERROR_CHECK(err_code);
+
+    unTick = nrfx_timer_ms_to_ticks(&sTmr, 700);
+
+    nrfx_timer_extended_compare(&sTmr, NRF_TIMER_CC_CHANNEL0, unTick, NRF_TIMER_SHORT_COMPARE0_STOP_MASK, true);
+    //nrfx_timer_extended_compare(&sTmr, NRF_TIMER_CC_CHANNEL1, unTick/2, NRF_TIMER_SHORT_COMPARE1_STOP_MASK, true);
+
+    //nrfx_timer_enable(&ssBtnIqrParams.Tmr);
+
+
+    pca10059_BlinkByParams_init(&sInst, LED_PWM_PERIOD_US, msBlinkParams, BLINKING_MAX_PARAM_SIZE);
 
     while(1)
     {
-        pca10059_BlinkByParams_process(&sInst, true);
+        if (BTN_PRESSED == pca10059_GetButtonState())
+            fPressed = true;
+        else
+            fPressed = false;
+
+        pca10059_BlinkByParams_process(&sInst, fPressed);
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }

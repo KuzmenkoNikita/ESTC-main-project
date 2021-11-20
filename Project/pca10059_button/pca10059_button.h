@@ -1,11 +1,13 @@
 #include <stdint.h>
 
+
 /** @brief Enumerator used for button state */
 typedef enum
 {
     BTN_UNDEFINED = -1,
     BTN_PRESSED,
-    BTN_RELEASED
+    BTN_RELEASED,
+    BTN_DOUBLE_CLICKED
 }eBtnState;
 
 /**
@@ -22,6 +24,7 @@ typedef struct
     eBtnState       eBtnIrqState;
     FnButtonHandler fnBtnHandler;               /* Set 0 if not use IRQ */
     void*           pUserData;                  /* user param */
+    int32_t        unTmrInsNum;                 /* Tmr ins num for double click IRQ. -1 if not used */
 }SBtnIRQParams;
 
 /** @brief Function used for button initialization 

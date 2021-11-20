@@ -129,6 +129,10 @@
 #define NRFX_SYSTICK_ENABLED 1
 #endif
 
+#ifndef NRFX_TIMER_ENABLED
+#define NRFX_TIMER_ENABLED 1
+#endif
+
 // </e>
 
 #endif
