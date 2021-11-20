@@ -1,34 +1,15 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
-#include "nrf_delay.h"
-#include "pca10059_led.h"
 #include "pca10059_button.h"
-
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 #include "app_usbd.h"
 #include "app_usbd_serial_num.h"
-#include "nrfx_systick.h"
-#include <nrfx_timer.h>
-#include "pca10059_led_pwm.h"
-
 #include "pca10059_LedsBlinkByParams.h"
 
-
-#define LED_PWM_PERIOD_US       1000
-
-
-typedef struct
-{
-    nrfx_systick_state_t    sDebounceSystick;
-    uint32_t                unPressCnt;
-    bool                    fHIElapsed;
-    nrfx_timer_t*           psTmr;
-}SDebounceParams;
-
+#define LED_PWM_PERIOD_US 1000
 
 /**
  * @brief Init logs
