@@ -28,8 +28,8 @@ void pca10059_BlinkByParams_init(SBlinkyInstance* psInstance, uint32_t unLedsPwm
     psInstance->unMassParamSize = unMassSize;
     psInstance->unTotalTimeUs = 0;
         
-    pca10059_led_pwm_init(&psInstance->sLed1PWM, psBlinkyParams->unLedsPWMPeriodUs, ELED_1);
-    pca10059_led_pwm_init(&psInstance->sLed2PWM, psBlinkyParams->unLedsPWMPeriodUs, ELED_2);
+    pca10059_led_pwm_init(&psInstance->sLed1PWM, psInstance->unLedsPWMPeriodUs, ELED_1);
+    pca10059_led_pwm_init(&psInstance->sLed2PWM, psInstance->unLedsPWMPeriodUs, ELED_2);
 
     psInstance->sLedTimeParams.unGreenTOnUsec   = 0;
     psInstance->sLedTimeParams.unBlueTOnUsec    = 0;

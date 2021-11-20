@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#define PCA10059_TRM4DBLCLICK   0
 
 /** @brief Enumerator used for button state */
 typedef enum
@@ -24,7 +25,6 @@ typedef struct
     eBtnState       eBtnIrqState;
     FnButtonHandler fnBtnHandler;               /* Set 0 if not use IRQ */
     void*           pUserData;                  /* user param */
-    int32_t        unTmrInsNum;                 /* Tmr ins num for double click IRQ. -1 if not used */
 }SBtnIRQParams;
 
 /** @brief Function used for button initialization 
