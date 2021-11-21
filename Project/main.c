@@ -19,6 +19,9 @@
 #define LED_PWM_PERIOD_US   1000
 #define COUNTOF_WORKMODES   3
 
+#define WAIT_AFTER_CHANGE_WM_MS     400
+#define WAIT_APPLY_PARAM            100
+
 /**
  * @brief Init logs
  */
@@ -30,30 +33,52 @@ void logs_init()
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
-{
-    while(1)
-    {
-        NRF_LOG_INFO("ERROR HANDLER !!!! ");
-        LOG_BACKEND_USB_PROCESS();
-        NRF_LOG_PROCESS();
-    }
-}
-
+/**
+ * @brief Button Double-click handler
+ */
 void ButtonHandler(eBtnState eState, void* pData)
 {
-    EWMTypes mWMs[COUNTOF_WORKMODES] = {EWM_TUNING_H, EWM_TUNING_S, EWM_TUNING_V};
-
     if(!pData)
         return;
 
-    uint32_t* pCnt = (uint32_t*)pData;
-    WMIndication_SetWM(mWMs[*pCnt]);
+    EWMTypes* peCurrentWM = (EWMTypes*)pData;
 
-    (*pCnt)++;
+    if(*peCurrentWM == EWM_TUNING_V)
+        *peCurrentWM  = EWM_TUNING_H;
+    else
+        (*peCurrentWM)++;
 
-    if(*pCnt == COUNTOF_WORKMODES)
-        *pCnt = 0;
+    WMIndication_SetWM(*peCurrentWM);
+}
+/* ******************************************************************* */
+void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
+{
+    if(!psHSV)
+        return;
+
+    if(eWM == EWM_TUNING_H)
+    {
+        ++psHSV->H;
+
+        if(psHSV->H > 360)
+            psHSV->H = 0;
+    }
+    else if (eWM == EWM_TUNING_S)
+    {
+        ++psHSV->S;
+
+        if(psHSV->S > 100)
+            psHSV->S = 0;
+    }
+    else if (eWM == EWM_TUNING_V)
+    {
+        ++psHSV->V;
+
+        if(psHSV->V > 100)
+            psHSV->V = 0;
+    }
+    else
+        return;
 }
 
 /**
@@ -63,41 +88,77 @@ int main(void)
 {
 
     SBtnIRQParams sBtnIrq;
-    uint32_t unWMCnt = 0;
+    EWMTypes eCurrentWM = EWM_NO_INPUT;
+    EWMTypes eNewWM = EWM_NO_INPUT;
+
+    SHSVCoordinates sHSV;
+    SRGBCoordinates sRGB;
+
+    sHSV.H = 0;
+    sHSV.S = 0;
+    sHSV.V = 100;
+    HSVtoRGB_calc(&sHSV, &sRGB);
 
     sBtnIrq.eBtnIrqState    = BTN_DOUBLE_CLICKED;
     sBtnIrq.fnBtnHandler    = ButtonHandler;
-    sBtnIrq.pUserData       = (void*)&unWMCnt;
+    sBtnIrq.pUserData       = (void*)&eCurrentWM;
     
-
     logs_init();
+
+    pca10059_RGBLed_init();
+    pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+
+    WMIndication_init();
+
+    WMIndication_SetWM(eCurrentWM);
 
     pca10059_button_init(&sBtnIrq);
     pca10059_button_enable_irq();
 
-    pca10059_RGBLed_init();
-    pca10059_RGBLed_Set(255, 255, 255);
-
-    WMIndication_init();
-
-    WMIndication_SetWM(EWM_NO_INPUT);
-
-    SHSVCoordinates sHSV;
-    SRGBCoordinates sRGB;
-    sHSV.H = 180;
-    sHSV.S = 40;
-    sHSV.V = 75;
-
-    HSVtoRGB_calc(&sHSV, &sRGB);
-
-
+    uint32_t unTimeCnt = 0;
+    uint32_t unWaitWMTimeout = 0;
 
     while(1)
     {
+        /* Small delay after changing WM */
+        if(eNewWM != eCurrentWM)
+        {
+            nrf_delay_ms(10);
+            unWaitWMTimeout+=10;
+
+            if(unWaitWMTimeout == WAIT_AFTER_CHANGE_WM_MS)
+            {
+                unWaitWMTimeout = 0;
+                eNewWM = eCurrentWM;
+            }
+        }
+        else if(BTN_PRESSED == pca10059_GetButtonState() && eNewWM != EWM_NO_INPUT)
+        {
+            nrf_delay_ms(10);
+            if(BTN_PRESSED == pca10059_GetButtonState())
+            {
+                unTimeCnt+=10;
+            }
+            else
+                unTimeCnt = 0;
+
+            if(unTimeCnt == WAIT_APPLY_PARAM)
+            {
+                unTimeCnt = 0;
+
+                IncrementHSVByWormode(&sHSV, eNewWM);
+
+                HSVtoRGB_calc(&sHSV, &sRGB);
+                pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+            }
+        }
+        else
+        {
+            unTimeCnt = 0;
+        }
+        
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
-        nrf_delay_ms(100);
-        NRF_LOG_INFO("R %u, G %u, B %u ", sRGB.R, sRGB.G, sRGB.B);
     }
 }
 
