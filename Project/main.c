@@ -14,8 +14,10 @@
 
 #include "nrf_gpio.h"
 #include "pca10059_rgb_led.h"
+#include "HSV_to_RGB_Calc.h"
 
-#define LED_PWM_PERIOD_US 1000
+#define LED_PWM_PERIOD_US   1000
+#define COUNTOF_WORKMODES   3
 
 /**
  * @brief Init logs
@@ -40,7 +42,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 
 void ButtonHandler(eBtnState eState, void* pData)
 {
-    EWMTypes mWMs[3] = {EWM_TUNING_H, EWM_TUNING_S, EWM_TUNING_V};
+    EWMTypes mWMs[COUNTOF_WORKMODES] = {EWM_TUNING_H, EWM_TUNING_S, EWM_TUNING_V};
 
     if(!pData)
         return;
@@ -50,7 +52,7 @@ void ButtonHandler(eBtnState eState, void* pData)
 
     (*pCnt)++;
 
-    if(*pCnt == 3)
+    if(*pCnt == COUNTOF_WORKMODES)
         *pCnt = 0;
 }
 
@@ -61,12 +63,11 @@ int main(void)
 {
 
     SBtnIRQParams sBtnIrq;
-    //bool fEnable = false;
-    uint32_t unCnt = 0;
+    uint32_t unWMCnt = 0;
 
     sBtnIrq.eBtnIrqState    = BTN_DOUBLE_CLICKED;
     sBtnIrq.fnBtnHandler    = ButtonHandler;
-    sBtnIrq.pUserData       = (void*)&unCnt;
+    sBtnIrq.pUserData       = (void*)&unWMCnt;
     
 
     logs_init();
@@ -81,10 +82,22 @@ int main(void)
 
     WMIndication_SetWM(EWM_NO_INPUT);
 
+    SHSVCoordinates sHSV;
+    SRGBCoordinates sRGB;
+    sHSV.H = 180;
+    sHSV.S = 40;
+    sHSV.V = 75;
+
+    HSVtoRGB_calc(&sHSV, &sRGB);
+
+
+
     while(1)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
+        nrf_delay_ms(100);
+        NRF_LOG_INFO("R %u, G %u, B %u ", sRGB.R, sRGB.G, sRGB.B);
     }
 }
 
