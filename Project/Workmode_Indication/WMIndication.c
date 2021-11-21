@@ -64,7 +64,7 @@ void WMIndication_ledPWM_callback(nrfx_pwm_evt_type_t event_type)
 /* ************************************************************************* */
 int8_t WMIndication_init(void)
 {
-    nrfx_pwm_t sPWMInst = NRFX_PWM_INSTANCE(1);
+    nrfx_pwm_t sPWMInst = NRFX_PWM_INSTANCE(WM_INDICATION_PWM_INSTANCE);
     unsigned i = 0;
 
     nrfx_pwm_config_t const sPWMCfg = 

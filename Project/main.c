@@ -40,13 +40,18 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 
 void ButtonHandler(eBtnState eState, void* pData)
 {
-    NRF_LOG_INFO("!!! Double click !!! ");
+    EWMTypes mWMs[3] = {EWM_TUNING_H, EWM_TUNING_S, EWM_TUNING_V};
 
     if(!pData)
         return;
 
-    bool* pfEnState = (bool*)pData;
-    *pfEnState = !(*pfEnState);
+    uint32_t* pCnt = (uint32_t*)pData;
+    WMIndication_SetWM(mWMs[*pCnt]);
+
+    (*pCnt)++;
+
+    if(*pCnt == 3)
+        *pCnt = 0;
 }
 
 /**
@@ -56,10 +61,13 @@ int main(void)
 {
 
     SBtnIRQParams sBtnIrq;
-    bool fEnable = false;
+    //bool fEnable = false;
+    uint32_t unCnt = 0;
+
     sBtnIrq.eBtnIrqState    = BTN_DOUBLE_CLICKED;
     sBtnIrq.fnBtnHandler    = ButtonHandler;
-    sBtnIrq.pUserData       = (void*)&fEnable;
+    sBtnIrq.pUserData       = (void*)&unCnt;
+    
 
     logs_init();
 
@@ -71,7 +79,7 @@ int main(void)
 
     WMIndication_init();
 
-    WMIndication_SetWM(EWM_TUNING_S);
+    WMIndication_SetWM(EWM_NO_INPUT);
 
     while(1)
     {
