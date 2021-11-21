@@ -55,6 +55,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(PROJ_DIR)/pca10059_LedsBlinkByParams/pca10059_LedsBlinkByParams.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
+  $(PROJ_DIR)/pca10059_led/pca100059_rgb_led/pca10059_rgb_led.c \
   
 
 # Include folders common to all targets
@@ -95,6 +96,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/modules/nrfx/drivers/include \
   $(PROJ_DIR)/pca10059_led/pwm/ \
   $(PROJ_DIR)/pca10059_LedsBlinkByParams \
+  $(PROJ_DIR)/pca10059_led/pca100059_rgb_led  \
 
 
 # Libraries common to all targets
