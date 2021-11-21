@@ -25,6 +25,15 @@ void logs_init()
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
+{
+    while(1)
+    {
+        NRF_LOG_INFO("ERROR HANDLER !!!! ");
+        LOG_BACKEND_USB_PROCESS();
+        NRF_LOG_PROCESS();
+    }
+}
 
 void ButtonHandler(eBtnState eState, void* pData)
 {
@@ -54,17 +63,17 @@ int main(void)
    // SBlinkyInstance sInst;
     SBtnIRQParams sBtnIrq;
     bool fEnable = false;
-    nrfx_pwm_t sPWMInst;
+    nrfx_pwm_t sPWMInst = NRFX_PWM_INSTANCE(0);
     nrfx_pwm_config_t const sPWMCfg = 
     {
-        .output_pins  = {NRF_GPIO_PIN_MAP(0,6) | NRFX_PWM_PIN_INVERTED,                    
+        .output_pins  = {NRF_GPIO_PIN_MAP(0,6)  | NRFX_PWM_PIN_INVERTED,                    
                       NRFX_PWM_PIN_NOT_USED,                    
                       NRFX_PWM_PIN_NOT_USED,                    
                       NRFX_PWM_PIN_NOT_USED},                  
         .irq_priority = 3,                  
         .base_clock   = NRF_PWM_CLK_125kHz,     
         .count_mode   = NRF_PWM_MODE_UP,    
-        .top_value    = 10000,                     
+        .top_value    = 62500,                     
         .load_mode    = NRF_PWM_LOAD_INDIVIDUAL, 
         .step_mode    = NRF_PWM_STEP_AUTO
     };
@@ -84,7 +93,13 @@ int main(void)
 
     APP_ERROR_CHECK(nrfx_pwm_init(&sPWMInst, &sPWMCfg, 0));
 
-    static uint16_t /*const*/ seq_values[] =
+    static nrf_pwm_values_individual_t sSeqVal;
+    sSeqVal.channel_0 = 32868;
+    sSeqVal.channel_1 = 0;
+    sSeqVal.channel_2 = 0;
+    sSeqVal.channel_3 = 0; 
+    /*
+    static uint16_t seq_values[] =
     {
         0x8000,
              0,
@@ -93,15 +108,16 @@ int main(void)
         0x8000,
              0
     };
-
-    nrf_pwm_sequence_t const SSeq =
+    */
+   
+    nrf_pwm_sequence_t static SSeq =
     {
-        .values.p_common = seq_values,
-        .length          = NRF_PWM_VALUES_LENGTH(seq_values),
-        .repeats         = 4,
-        .end_delay       = 0
+        .values.p_individual    = &sSeqVal,
+        .length                 = NRF_PWM_VALUES_LENGTH(sSeqVal),
+        .repeats                = 0,
+        .end_delay              = 0
     };
-
+    
     nrfx_pwm_simple_playback(&sPWMInst,&SSeq ,1, NRFX_PWM_FLAG_LOOP);
 
     while(1)
