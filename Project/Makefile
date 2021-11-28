@@ -58,6 +58,7 @@ SRC_FILES += \
   $(PROJ_DIR)/pca10059_led/pca100059_rgb_led/pca10059_rgb_led.c \
   $(PROJ_DIR)/Workmode_Indication/WMIndication.c  \
   $(PROJ_DIR)/HSV_to_RGB/HSV_to_RGB_Calc.c  \
+  $(PROJ_DIR)/LedStateSaver/CRC8/CRC8.c \
   
 
 # Include folders common to all targets
@@ -101,6 +102,7 @@ INC_FOLDERS += \
   $(PROJ_DIR)/pca10059_led/pca100059_rgb_led  \
   $(PROJ_DIR)/Workmode_Indication \
   $(PROJ_DIR)/HSV_to_RGB  \
+  $(PROJ_DIR)/LedStateSaver/CRC8  \
 
 
 # Libraries common to all targets
