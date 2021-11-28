@@ -155,7 +155,7 @@ int main(void)
         {
             unTimeCnt = 0;
         }
-        
+
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }
