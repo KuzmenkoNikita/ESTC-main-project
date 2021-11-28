@@ -1,5 +1,13 @@
 #include <stdint.h>
 
+/** @brief HSV Params */
+typedef enum
+{
+    E_PARAM_H,
+    E_PARAM_S,
+    E_PARAM_V
+}EHSVParams;
+
 /** @brief Structure with HSV coordincates */
 typedef struct 
 {
@@ -22,4 +30,14 @@ typedef struct
  * @param psHSV pointer to HSV coordinates
  * @param psRGB pointer to RGB coordinates
  */
-void HSVtoRGB_calc(SHSVCoordinates* psHSV, SRGBCoordinates* psRGB);
+void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB);
+
+/**
+ * @brief Increment params by one and rotate if it overflows
+ *
+ * @param eParams params for increment
+ * @param psHSV pointer to HSV coordinates
+ */
+void increment_with_rotate(SHSVCoordinates* psHSV, EHSVParams eParams);
+
+

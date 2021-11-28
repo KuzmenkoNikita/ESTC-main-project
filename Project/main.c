@@ -16,11 +16,8 @@
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
 
-#define LED_PWM_PERIOD_US   1000
-#define COUNTOF_WORKMODES   3
-
 #define WAIT_AFTER_CHANGE_WM_MS     400
-#define WAIT_APPLY_PARAM            100
+#define WAIT_APPLY_PARAM_MS         200
 
 /**
  * @brief Init logs
@@ -43,8 +40,8 @@ void ButtonHandler(eBtnState eState, void* pData)
 
     EWMTypes* peCurrentWM = (EWMTypes*)pData;
 
-    if(*peCurrentWM == EWM_TUNING_V)
-        *peCurrentWM  = EWM_TUNING_H;
+    if(*peCurrentWM == EWM_COUNT_WM - 1)
+        *peCurrentWM  = EWM_NO_INPUT;
     else
         (*peCurrentWM)++;
 
@@ -53,32 +50,34 @@ void ButtonHandler(eBtnState eState, void* pData)
 /* ******************************************************************* */
 void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
 {
+    EHSVParams eHSVParam;
     if(!psHSV)
         return;
 
-    if(eWM == EWM_TUNING_H)
+    switch(eWM)
     {
-        ++psHSV->H;
+        case EWM_TUNING_H:
+        {
+            eHSVParam = E_PARAM_H;
+            break;
+        }
 
-        if(psHSV->H > 360)
-            psHSV->H = 0;
-    }
-    else if (eWM == EWM_TUNING_S)
-    {
-        ++psHSV->S;
+        case EWM_TUNING_S:
+        {
+            eHSVParam = E_PARAM_S;
+            break;
+        }
 
-        if(psHSV->S > 100)
-            psHSV->S = 0;
-    }
-    else if (eWM == EWM_TUNING_V)
-    {
-        ++psHSV->V;
+        case EWM_TUNING_V:
+        {
+            eHSVParam = E_PARAM_V;
+            break;
+        }
 
-        if(psHSV->V > 100)
-            psHSV->V = 0;
+        default: return;
     }
-    else
-        return;
+
+    increment_with_rotate(psHSV, eHSVParam);
 }
 
 /**
@@ -125,11 +124,11 @@ int main(void)
         {
             nrf_delay_ms(10);
             unWaitWMTimeout+=10;
-
             if(unWaitWMTimeout == WAIT_AFTER_CHANGE_WM_MS)
             {
                 unWaitWMTimeout = 0;
                 eNewWM = eCurrentWM;
+                NRF_LOG_INFO("WM changed \n");
             }
         }
         else if(BTN_PRESSED == pca10059_GetButtonState() && eNewWM != EWM_NO_INPUT)
@@ -142,10 +141,10 @@ int main(void)
             else
                 unTimeCnt = 0;
 
-            if(unTimeCnt == WAIT_APPLY_PARAM)
+            if(unTimeCnt == WAIT_APPLY_PARAM_MS)
             {
                 unTimeCnt = 0;
-
+                NRF_LOG_INFO("Setting H %u , S %u , V %u \n", sHSV.H, sHSV.S, sHSV.V);
                 IncrementHSVByWormode(&sHSV, eNewWM);
 
                 HSVtoRGB_calc(&sHSV, &sRGB);
