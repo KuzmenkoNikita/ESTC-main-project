@@ -59,6 +59,8 @@ SRC_FILES += \
   $(PROJ_DIR)/Workmode_Indication/WMIndication.c  \
   $(PROJ_DIR)/HSV_to_RGB/HSV_to_RGB_Calc.c  \
   $(PROJ_DIR)/LedStateSaver/CRC8/CRC8.c \
+  $(PROJ_DIR)/LedStateSaver/LedStateSaver.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c   \
   
 
 # Include folders common to all targets
@@ -103,6 +105,8 @@ INC_FOLDERS += \
   $(PROJ_DIR)/Workmode_Indication \
   $(PROJ_DIR)/HSV_to_RGB  \
   $(PROJ_DIR)/LedStateSaver/CRC8  \
+  $(PROJ_DIR)/LedStateSaver \
+  $(SDK_ROOT)/modules/nrfx/drivers/include \
 
 
 # Libraries common to all targets

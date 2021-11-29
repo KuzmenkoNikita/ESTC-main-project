@@ -137,6 +137,10 @@
 #define NRFX_NVMC_ENABLED 1
 #endif
 
+#ifndef NRF_NVMC_ENABLED
+#define NRF_NVMC_ENABLED 0
+#endif
+
 // </e>
 
 #endif

@@ -15,9 +15,21 @@
 #include "nrf_gpio.h"
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
+#include "LedStateSaver.h"
 
 #define WAIT_AFTER_CHANGE_WM_MS     400
 #define WAIT_APPLY_PARAM_MS         200
+
+#define LEDSTATESAVER_FIRST_PAGE_ADDR   0x000DD000
+#define LEDSTATESAVER_SECOND_PAGE_ADDR  0x000DE000
+
+typedef struct 
+{
+    SRGBCoordinates* psRGB;
+    EWMTypes*        peCurrentWM;
+    SLedStateSaverInst* psSaver;
+}SButtonIRQData;
+
 
 /**
  * @brief Init logs
@@ -38,14 +50,23 @@ void ButtonHandler(eBtnState eState, void* pData)
     if(!pData)
         return;
 
-    EWMTypes* peCurrentWM = (EWMTypes*)pData;
+    SButtonIRQData* sBtnIRQData =  (SButtonIRQData*)pData;
 
-    if(*peCurrentWM == EWM_COUNT_WM - 1)
-        *peCurrentWM  = EWM_NO_INPUT;
+    if(*(sBtnIRQData->peCurrentWM) == EWM_COUNT_WM - 1)
+    {
+        *(sBtnIRQData->peCurrentWM)  = EWM_NO_INPUT;
+        SLEDColorState sLedColorState;
+
+        sLedColorState.Red      = sBtnIRQData->psRGB->R;
+        sLedColorState.Green    = sBtnIRQData->psRGB->G;
+        sLedColorState.Blue     = sBtnIRQData->psRGB->B;
+
+        LedStateSaver_SaveLedState(sBtnIRQData->psSaver, &sLedColorState);
+    }
     else
-        (*peCurrentWM)++;
+        *(sBtnIRQData->peCurrentWM)= *(sBtnIRQData->peCurrentWM) + 1;
 
-    WMIndication_SetWM(*peCurrentWM);
+    WMIndication_SetWM(*(sBtnIRQData->peCurrentWM));
 }
 /* ******************************************************************* */
 void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
@@ -85,22 +106,42 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
  */
 int main(void)
 {
-
     SBtnIRQParams sBtnIrq;
     EWMTypes eCurrentWM = EWM_NO_INPUT;
     EWMTypes eNewWM = EWM_NO_INPUT;
 
     SHSVCoordinates sHSV;
     SRGBCoordinates sRGB;
+    SLedStateSaverInst sLedStateSaver;
+    SLedStateSaverParam sLedStateSaverParam;
+
+    sLedStateSaverParam.unFirstPageAddr = LEDSTATESAVER_FIRST_PAGE_ADDR;
+    sLedStateSaverParam.unSecondPageAddr = LEDSTATESAVER_SECOND_PAGE_ADDR;
+    LedStateSaver_init(&sLedStateSaver, &sLedStateSaverParam);
+    SLEDColorState sledState;
+    SButtonIRQData sBtnIRQData;
+    sBtnIRQData.psRGB = &sRGB;
+    sBtnIRQData.peCurrentWM = &eCurrentWM;
+    sBtnIRQData.psSaver = &sLedStateSaver;
 
     sHSV.H = 0;
     sHSV.S = 0;
     sHSV.V = 100;
-    HSVtoRGB_calc(&sHSV, &sRGB);
+
+    if(0 != LedStateSaver_GetStateFromFlash(&sLedStateSaver, &sledState))
+    {
+        HSVtoRGB_calc(&sHSV, &sRGB);
+    }
+    else
+    {
+        sRGB.R = sledState.Red;
+        sRGB.G = sledState.Green;
+        sRGB.B = sledState.Blue;
+    }
 
     sBtnIrq.eBtnIrqState    = BTN_DOUBLE_CLICKED;
     sBtnIrq.fnBtnHandler    = ButtonHandler;
-    sBtnIrq.pUserData       = (void*)&eCurrentWM;
+    sBtnIrq.pUserData       = (void*)&sBtnIRQData;
     
     logs_init();
 
@@ -160,4 +201,6 @@ int main(void)
         NRF_LOG_PROCESS();
     }
 }
+
+
 
