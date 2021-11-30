@@ -25,8 +25,8 @@
 
 typedef struct 
 {
-    SRGBCoordinates* psRGB;
-    EWMTypes*        peCurrentWM;
+    SHSVCoordinates*    psHSV;
+    EWMTypes*           peCurrentWM;
     SLedStateSaverInst* psSaver;
 }SButtonIRQData;
 
@@ -57,9 +57,9 @@ void ButtonHandler(eBtnState eState, void* pData)
         *(sBtnIRQData->peCurrentWM)  = EWM_NO_INPUT;
         SLEDColorState sLedColorState;
 
-        sLedColorState.Red      = sBtnIRQData->psRGB->R;
-        sLedColorState.Green    = sBtnIRQData->psRGB->G;
-        sLedColorState.Blue     = sBtnIRQData->psRGB->B;
+        sLedColorState.H      = sBtnIRQData->psHSV->H;
+        sLedColorState.S    = sBtnIRQData->psHSV->S;
+        sLedColorState.V     = sBtnIRQData->psHSV->V;
 
         LedStateSaver_SaveLedState(sBtnIRQData->psSaver, &sLedColorState);
     }
@@ -120,24 +120,23 @@ int main(void)
     LedStateSaver_init(&sLedStateSaver, &sLedStateSaverParam);
     SLEDColorState sledState;
     SButtonIRQData sBtnIRQData;
-    sBtnIRQData.psRGB = &sRGB;
+    sBtnIRQData.psHSV = &sHSV;
     sBtnIRQData.peCurrentWM = &eCurrentWM;
     sBtnIRQData.psSaver = &sLedStateSaver;
 
     sHSV.H = 0;
-    sHSV.S = 0;
+    sHSV.S = 100;
     sHSV.V = 100;
 
-    if(0 != LedStateSaver_GetStateFromFlash(&sLedStateSaver, &sledState))
+    if(0 == LedStateSaver_GetStateFromFlash(&sLedStateSaver, &sledState))
     {
-        HSVtoRGB_calc(&sHSV, &sRGB);
+        
+        sHSV.H = sledState.H;
+        sHSV.S = sledState.S;
+        sHSV.V = sledState.V;
     }
-    else
-    {
-        sRGB.R = sledState.Red;
-        sRGB.G = sledState.Green;
-        sRGB.B = sledState.Blue;
-    }
+
+    HSVtoRGB_calc(&sHSV, &sRGB);
 
     sBtnIrq.eBtnIrqState    = BTN_DOUBLE_CLICKED;
     sBtnIrq.fnBtnHandler    = ButtonHandler;

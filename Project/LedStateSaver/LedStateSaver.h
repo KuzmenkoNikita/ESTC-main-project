@@ -8,9 +8,9 @@
 /** @brief Color params */
 typedef struct 
 {
-    uint8_t Red;
-    uint8_t Green;
-    uint8_t Blue;
+    uint16_t    H;
+    uint8_t     S;
+    uint8_t     V;
 }SLEDColorState;
 
 /** @brief module init params. This module requires 2 flash pages*/
@@ -23,7 +23,6 @@ typedef struct
 /** @brief module instance */
 typedef struct 
 {
-
     uint32_t mFlashPagesAddr[LEDSTATESAVER_COUNTOF_PAGES];
     uint32_t unFlashPageSize;
     uint32_t unWriteAddr;

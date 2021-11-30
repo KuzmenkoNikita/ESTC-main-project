@@ -11,8 +11,10 @@ typedef union
 {
     struct 
     {
-        SLEDColorState sColorParams;
-        uint8_t CRC;
+        unsigned H  : 10;
+        unsigned S  : 7;
+        unsigned V  : 7;
+        unsigned CRC: 8;
     };
 
     uint32_t unVal;
@@ -23,13 +25,19 @@ typedef union
 */
 uint8_t LedStateSaver_CalkColorsCRC(const SLEDColorState* psColor)
 {
+    ULedState uState;
+
     if(!psColor)
         return 0;
 
-    /* make temp mass for safety, (align or smth else...) do not use poinet to struct directly */
-    uint8_t unTempMas[PCA10059_COUNTOF_PARAMS] = {psColor->Red, psColor->Green, psColor->Blue};
+    if(psColor->H > 360 || psColor->S > 100 || psColor->V >360)
+        return 0;
 
-    return CRC8_calc(unTempMas, PCA10059_COUNTOF_PARAMS);
+    uState.H = psColor->H;
+    uState.S = psColor->S;
+    uState.V = psColor->V;
+
+    return CRC8_calc((uint8_t*)&uState.unVal, PCA10059_COUNTOF_PARAMS);
 }
 /* **************************************************************************************** */
 int8_t LedStateSaver_init(SLedStateSaverInst* psInst, const SLedStateSaverParam* psParam)
@@ -91,6 +99,8 @@ int8_t LedStateSaver_init(SLedStateSaverInst* psInst, const SLedStateSaverParam*
 int8_t LedStateSaver_GetStateFromFlash(SLedStateSaverInst* psInst, SLEDColorState* psLedState)
 {
     ULedState uState;
+    SLEDColorState sLesState;
+
     if(!psInst || !psLedState)
         return -1;
 
@@ -99,10 +109,18 @@ int8_t LedStateSaver_GetStateFromFlash(SLedStateSaverInst* psInst, SLEDColorStat
     if(uState.unVal == 0xFFFFFFFF)
         return -1;
 
-    if(uState.CRC == LedStateSaver_CalkColorsCRC(&uState.sColorParams))
-        *psLedState = uState.sColorParams;
+    sLesState.H = uState.H;
+    sLesState.S = uState.S;
+    sLesState.V = uState.V;
+
+    if(uState.CRC == LedStateSaver_CalkColorsCRC(&sLesState))
+    {
+        *psLedState = sLesState;
+    }
     else
+    {
         return -1;
+    }
 
     return 0;
 }
@@ -142,6 +160,9 @@ void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, SLEDColorState* psLe
     if(!psInst || !psLedState)
         return;
 
+    if(psLedState->H > 360 || psLedState->S > 100 || psLedState->V >360)
+        return;
+
     uint32_t unEndPage = psInst->mFlashPagesAddr[psInst->unActivePageNum] + psInst->unFlashPageSize;
 
     if(psInst->unWriteAddr == unEndPage)
@@ -153,7 +174,10 @@ void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, SLEDColorState* psLe
     }
 
     uState.CRC = LedStateSaver_CalkColorsCRC(psLedState);
-    uState.sColorParams = *psLedState;
+
+    uState.H = psLedState->H;
+    uState.S = psLedState->S;
+    uState.V = psLedState->V;
 
     nrfx_nvmc_word_write(psInst->unWriteAddr, uState.unVal); 
 
