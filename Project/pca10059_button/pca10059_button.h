@@ -25,6 +25,8 @@ typedef struct
     eBtnState       eBtnIrqState;
     FnButtonHandler fnBtnHandler;               /* Set 0 if not use IRQ */
     void*           pUserData;                  /* user param */
+    uint32_t        unHiTmrNum; 
+    uint32_t        unLowTmrNum;         
 }SBtnIRQParams;
 
 /** @brief Function used for button initialization 

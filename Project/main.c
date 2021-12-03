@@ -141,6 +141,8 @@ int main(void)
     sBtnIrq.eBtnIrqState    = BTN_DOUBLE_CLICKED;
     sBtnIrq.fnBtnHandler    = ButtonHandler;
     sBtnIrq.pUserData       = (void*)&sBtnIRQData;
+    sBtnIrq.unHiTmrNum      = 0;
+    sBtnIrq.unLowTmrNum     = 1;
     
     logs_init();
 

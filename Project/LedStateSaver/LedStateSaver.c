@@ -67,8 +67,13 @@ int8_t LedStateSaver_init(SLedStateSaverInst* psInst, const SLedStateSaverParam*
     }
     else
     {
-        /* unexpected behaviour */
-        return -1;
+        /* if 2 sectors is not clear, erease them ... */
+        for(int i = 0; i < LEDSTATESAVER_COUNTOF_PAGES; ++i)
+            if(NRFX_SUCCESS != nrfx_nvmc_page_erase(psInst->mFlashPagesAddr[i]))
+                return -1;
+
+        ActivePageAddr = psInst->mFlashPagesAddr[1];
+        psInst->unActivePageNum = 1;       
     }
 
     /* find last data  */
