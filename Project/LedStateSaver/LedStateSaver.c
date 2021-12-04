@@ -5,6 +5,7 @@
 
 #define PCA10059_PAGE_SIZE  0x1000
 #define PCA10059_COUNTOF_PARAMS 3
+#define PCA10059_CLEAR_FLASH_VAL    0xFFFFFFFF
 
 /** @brief Led color state */
 typedef union 
@@ -23,7 +24,7 @@ typedef union
 
 /** @brief Calc CRC for the LED color data
 */
-uint8_t LedStateSaver_CalkColorsCRC(const SLEDColorState* psColor)
+uint8_t LedStateSaver_CalcColorsCRC(const SLEDColorState* psColor)
 {
     ULedState uState;
 
@@ -55,12 +56,12 @@ int8_t LedStateSaver_init(SLedStateSaverInst* psInst, const SLedStateSaverParam*
     psInst->unWriteAddr         = 0;
 
     /* one sector is always clear */
-    if(*(uint32_t*)psInst->mFlashPagesAddr[0] == 0xFFFFFFFF)
+    if(*(uint32_t*)psInst->mFlashPagesAddr[0] == PCA10059_CLEAR_FLASH_VAL)
     {
         ActivePageAddr = psInst->mFlashPagesAddr[1];
         psInst->unActivePageNum = 1;
     }
-    else if (*(uint32_t*)psInst->mFlashPagesAddr[1] == 0xFFFFFFFF)
+    else if (*(uint32_t*)psInst->mFlashPagesAddr[1] == PCA10059_CLEAR_FLASH_VAL)
     {
         ActivePageAddr = psInst->mFlashPagesAddr[0];
         psInst->unActivePageNum = 0;
@@ -81,7 +82,7 @@ int8_t LedStateSaver_init(SLedStateSaverInst* psInst, const SLedStateSaverParam*
         FlashAddr >= ActivePageAddr;
         FlashAddr-=sizeof(uint32_t))
     {
-        if(*(uint32_t*)FlashAddr != 0xFFFFFFFF)
+        if(*(uint32_t*)FlashAddr != PCA10059_CLEAR_FLASH_VAL)
         {
             break;
         }
@@ -111,14 +112,14 @@ int8_t LedStateSaver_GetStateFromFlash(SLedStateSaverInst* psInst, SLEDColorStat
 
     uState.unVal = *((uint32_t*)psInst->unReadAddr);
     
-    if(uState.unVal == 0xFFFFFFFF)
+    if(uState.unVal == PCA10059_CLEAR_FLASH_VAL)
         return -1;
 
     sLesState.H = uState.H;
     sLesState.S = uState.S;
     sLesState.V = uState.V;
 
-    if(uState.CRC == LedStateSaver_CalkColorsCRC(&sLesState))
+    if(uState.CRC == LedStateSaver_CalcColorsCRC(&sLesState))
     {
         *psLedState = sLesState;
     }
@@ -135,28 +136,13 @@ void LedStateSaver_ChangePage(SLedStateSaverInst* psInst)
     if(!psInst)
         return;
 
-    switch(psInst->unActivePageNum)
-    {
-        case 0:
-        {
-            psInst->unActivePageNum = 1;
-            break;
-        }
-
-        case 1:
-        {
-            psInst->unActivePageNum = 0;
-            break;
-        }
-
-        default: return;
-    }
+    psInst->unActivePageNum = (psInst->unActivePageNum + 1) % LEDSTATESAVER_COUNTOF_PAGES;
 
     psInst->unWriteAddr =  psInst->mFlashPagesAddr[psInst->unActivePageNum];
     return ;
 }
 /* **************************************************************************************** */
-void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, SLEDColorState* psLedState)
+void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, const SLEDColorState* psLedState)
 {
     ULedState uState;
     bool IsNeedErease = false;
@@ -178,7 +164,7 @@ void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, SLEDColorState* psLe
         
     }
 
-    uState.CRC = LedStateSaver_CalkColorsCRC(psLedState);
+    uState.CRC = LedStateSaver_CalcColorsCRC(psLedState);
 
     uState.H = psLedState->H;
     uState.S = psLedState->S;

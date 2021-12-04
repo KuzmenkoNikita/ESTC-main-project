@@ -57,9 +57,9 @@ void ButtonHandler(eBtnState eState, void* pData)
         *(sBtnIRQData->peCurrentWM)  = EWM_NO_INPUT;
         SLEDColorState sLedColorState;
 
-        sLedColorState.H      = sBtnIRQData->psHSV->H;
+        sLedColorState.H    = sBtnIRQData->psHSV->H;
         sLedColorState.S    = sBtnIRQData->psHSV->S;
-        sLedColorState.V     = sBtnIRQData->psHSV->V;
+        sLedColorState.V    = sBtnIRQData->psHSV->V;
 
         LedStateSaver_SaveLedState(sBtnIRQData->psSaver, &sLedColorState);
     }

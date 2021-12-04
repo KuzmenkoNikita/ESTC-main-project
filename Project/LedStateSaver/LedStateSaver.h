@@ -54,6 +54,6 @@ int8_t LedStateSaver_GetStateFromFlash(SLedStateSaverInst* psInst, SLEDColorStat
  * @param psInst    pointer to module instance struct
  * @param psLedState   pointer to LED state struct
  */
-void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, SLEDColorState* psLedState);
+void LedStateSaver_SaveLedState(SLedStateSaverInst* psInst, const SLEDColorState* psLedState);
 
 #endif /* LED_STATE_SAVER */
