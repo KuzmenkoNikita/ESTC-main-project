@@ -27,7 +27,7 @@
 
 #define READ_SIZE 1
 
-static char m_rx_buffer[READ_SIZE];
+//static char m_rx_buffer[READ_SIZE];
 
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event);
@@ -58,6 +58,7 @@ typedef struct
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event)
 {
+    #if 0
     switch (event)
     {
     case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
@@ -111,6 +112,7 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
     default:
         break;
     }
+    #endif
 }
 
 
@@ -257,10 +259,6 @@ int main(void)
     uint32_t unTimeCnt = 0;
     uint32_t unWaitWMTimeout = 0;
 
-    //app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
-    //ret_code_t ret = app_usbd_class_append(class_cdc_acm);
-    //APP_ERROR_CHECK(ret);
-
     //SLEDStateParserInst sParserInst;
     //SLEDStateParserInfo sParserInfo;
 
@@ -271,8 +269,23 @@ int main(void)
 
     //LEDStateParser_init(&sParserInst, &sParserInfo);
     
+    app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
+    ret_code_t ret = app_usbd_class_append(class_cdc_acm);
+    APP_ERROR_CHECK(ret);
+
     while(1)
     {
+        while(1)
+        {
+            while(app_usbd_event_queue_process())
+            {
+
+            }
+
+            LOG_BACKEND_USB_PROCESS();
+            NRF_LOG_PROCESS();
+        }
+
         /* Small delay after changing WM */
         if(eNewWM != eCurrentWM)
         {
@@ -310,6 +323,10 @@ int main(void)
             unTimeCnt = 0;
         }
 
+        while(app_usbd_event_queue_process())
+        {
+            
+        }
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }
