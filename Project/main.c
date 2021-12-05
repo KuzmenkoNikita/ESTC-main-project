@@ -17,6 +17,7 @@
 #include "HSV_to_RGB_Calc.h"
 #include "LedStateSaver.h"
 #include "app_usbd_cdc_acm.h"
+#include "LEDState_Parser.h"
 
 #define WAIT_AFTER_CHANGE_WM_MS     400
 #define WAIT_APPLY_PARAM_MS         200

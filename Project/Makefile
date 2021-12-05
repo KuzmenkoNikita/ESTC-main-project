@@ -62,6 +62,7 @@ SRC_FILES += \
   $(PROJ_DIR)/LedStateSaver/LedStateSaver.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c   \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c  \
+  $(PROJ_DIR)/LEDState_Parser/LEDState_Parser.c \
   
 
 # Include folders common to all targets
@@ -109,6 +110,7 @@ INC_FOLDERS += \
   $(PROJ_DIR)/LedStateSaver \
   $(SDK_ROOT)/modules/nrfx/drivers/include \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm \
+  $(PROJ_DIR)/LEDState_Parser \
 
 
 # Libraries common to all targets
