@@ -27,7 +27,7 @@
 
 #define READ_SIZE 1
 
-//static char m_rx_buffer[READ_SIZE];
+static char m_rx_buffer[READ_SIZE];
 
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event);
@@ -55,10 +55,11 @@ typedef struct
     SLedStateSaverInst* psSaver;
 }SButtonIRQData;
 
+static SLEDStateParserInst sParserInst;
+
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event)
 {
-    #if 0
     switch (event)
     {
     case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
@@ -74,7 +75,7 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
     }
     case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
     {
-        NRF_LOG_INFO("tx done");
+       // NRF_LOG_INFO("tx done");
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
@@ -83,8 +84,8 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
         do
         {
             /*Get amount of data transfered*/
-            size_t size = app_usbd_cdc_acm_rx_size(&usb_cdc_acm);
-            NRF_LOG_INFO("rx size: %d", size);
+           // size_t size = app_usbd_cdc_acm_rx_size(&usb_cdc_acm);
+            //NRF_LOG_INFO("rx size: %d", size);
 
             /* It's the simple version of an echo. Note that writing doesn't
              * block execution, and if we have a lot of characters to read and
@@ -101,6 +102,8 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                                              READ_SIZE);
             }
 
+            LEDStateParser_PutByte(&sParserInst, m_rx_buffer[0]);
+
             /* Fetch data until internal buffer is empty */
             ret = app_usbd_cdc_acm_read(&usb_cdc_acm,
                                         m_rx_buffer,
@@ -112,7 +115,6 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
     default:
         break;
     }
-    #endif
 }
 
 
@@ -188,7 +190,7 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
 
 void LEDStateParser_HelpRequest(void* pData)
 {
-
+    pca10059_RGBLed_Set(0,255,0);
 }
 
 void LEDStateParser_CMDError(void* pData)
@@ -259,15 +261,15 @@ int main(void)
     uint32_t unTimeCnt = 0;
     uint32_t unWaitWMTimeout = 0;
 
-    //SLEDStateParserInst sParserInst;
-    //SLEDStateParserInfo sParserInfo;
+    
+    SLEDStateParserInfo sParserInfo;
 
-    //sParserInfo.fnHelpRequest   = LEDStateParser_HelpRequest;
-    //sParserInfo.fnCMDError      = LEDStateParser_CMDError;
-    //sParserInfo.fnSetState      = LEDStateParser_SetLedState;
-    //sParserInfo.pData           = 0;
+    sParserInfo.fnHelpRequest   = LEDStateParser_HelpRequest;
+    sParserInfo.fnCMDError      = LEDStateParser_CMDError;
+    sParserInfo.fnSetState      = LEDStateParser_SetLedState;
+    sParserInfo.pData           = 0;
 
-    //LEDStateParser_init(&sParserInst, &sParserInfo);
+    LEDStateParser_init(&sParserInst, &sParserInfo);
     
     app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
     ret_code_t ret = app_usbd_class_append(class_cdc_acm);
@@ -281,6 +283,8 @@ int main(void)
             {
 
             }
+
+            LEDStateParser_Process(&sParserInst);
 
             LOG_BACKEND_USB_PROCESS();
             NRF_LOG_PROCESS();
