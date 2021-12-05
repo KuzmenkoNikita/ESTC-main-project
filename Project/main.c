@@ -184,6 +184,21 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
     increment_with_rotate(psHSV, eHSVParam);
 }
 
+void LEDStateParser_HelpRequest(void* pData)
+{
+
+}
+
+void LEDStateParser_CMDError(void* pData)
+{
+    pca10059_RGBLed_Set(255,0,0);
+}
+
+void LEDStateParser_SetLedState(ULEDStateParams* puParams, ETypeParams eTypeParam)
+{
+
+}
+
 /**
  * @brief Function for application main entry.
  */
@@ -242,9 +257,19 @@ int main(void)
     uint32_t unTimeCnt = 0;
     uint32_t unWaitWMTimeout = 0;
 
-    app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
-    ret_code_t ret = app_usbd_class_append(class_cdc_acm);
-    APP_ERROR_CHECK(ret);
+    //app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
+    //ret_code_t ret = app_usbd_class_append(class_cdc_acm);
+    //APP_ERROR_CHECK(ret);
+
+    //SLEDStateParserInst sParserInst;
+    //SLEDStateParserInfo sParserInfo;
+
+    //sParserInfo.fnHelpRequest   = LEDStateParser_HelpRequest;
+    //sParserInfo.fnCMDError      = LEDStateParser_CMDError;
+    //sParserInfo.fnSetState      = LEDStateParser_SetLedState;
+    //sParserInfo.pData           = 0;
+
+    //LEDStateParser_init(&sParserInst, &sParserInfo);
     
     while(1)
     {

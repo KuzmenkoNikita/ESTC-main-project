@@ -71,6 +71,15 @@ void LEDStateParser_Process(SLEDStateParserInst* psInstance)
     ++psInstance->unCMDBytesCount;
 
     if(*pData == '\n' || *pData == '\r')
+    {
+        if(psInstance->unCMDBytesCount > 16)
+        {
+            if(psInstance->fnCMDError != 0)
+            {
+                psInstance->fnCMDError(psInstance->pData);
+            }
+        }
+    }
 
 
 }
