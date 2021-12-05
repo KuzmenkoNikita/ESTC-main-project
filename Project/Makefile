@@ -61,6 +61,7 @@ SRC_FILES += \
   $(PROJ_DIR)/LedStateSaver/CRC8/CRC8.c \
   $(PROJ_DIR)/LedStateSaver/LedStateSaver.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c   \
+  $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c  \
   
 
 # Include folders common to all targets
@@ -107,6 +108,7 @@ INC_FOLDERS += \
   $(PROJ_DIR)/LedStateSaver/CRC8  \
   $(PROJ_DIR)/LedStateSaver \
   $(SDK_ROOT)/modules/nrfx/drivers/include \
+  $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm \
 
 
 # Libraries common to all targets
