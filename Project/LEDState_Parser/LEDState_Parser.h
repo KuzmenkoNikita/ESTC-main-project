@@ -45,7 +45,7 @@ typedef void (*FnCmdErrorCallback)(void* pData);
  * @param puParams   pointer to params value
  * @param eTypeParam type of params
  */
-typedef void (*FnSetLEDStateCallback)(ULEDStateParams* puParams, ETypeParams eTypeParam);
+typedef void (*FnSetLEDStateCallback)(ULEDStateParams* puParams, ETypeParams eTypeParam, void* pData);
 
 /** @brief Parser instance */
 typedef struct 

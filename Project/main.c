@@ -190,17 +190,30 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
 
 void LEDStateParser_HelpRequest(void* pData)
 {
-    pca10059_RGBLed_Set(0,255,0);
+    NRF_LOG_INFO("HELP REQUEST \n");
 }
 
 void LEDStateParser_CMDError(void* pData)
 {
-    pca10059_RGBLed_Set(255,0,0);
+    NRF_LOG_INFO("CMD ERROR \n");
 }
 
-void LEDStateParser_SetLedState(ULEDStateParams* puParams, ETypeParams eTypeParam)
+void LEDStateParser_SetLedState(ULEDStateParams* puParams, ETypeParams eTypeParam, void* pData)
 {
+    switch(eTypeParam)
+    {
+        case ELEDPARSER_HSV:
+        {
+            NRF_LOG_INFO("HSV: H: %u S: %u V: %u \n", puParams->sHSV.H, puParams->sHSV.S, puParams->sHSV.V);
+            break;
+        }
 
+        case ELEDPARSER_RGB:
+        {
+            NRF_LOG_INFO("RGB: R: %u G: %u B: %u \n", puParams->sRGB.R, puParams->sRGB.G, puParams->sRGB.B);
+            break;
+        }
+    }
 }
 
 /**
