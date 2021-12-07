@@ -28,6 +28,10 @@
 #define READ_SIZE 1
 
 static char m_rx_buffer[READ_SIZE];
+const char szUnknownCMD[]="Unknown command! Try \"help\" for info\n\r"; 
+const char szHelpHSVMsg[]="HSV <H> <S> <V> - Set HSV LED color H = [0:360], S = [0:100], V = [0:100]\n\r";
+const char szHelpRGBMsg[]="RGB <R> <G> <B> - Set RGB LED color R = [0:255], G = [0:255], B = [0:255]\n\r";
+const char szHelpMsg[]= "help - print help message\n\r";
 
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event);
@@ -56,6 +60,7 @@ typedef struct
 }SButtonIRQData;
 
 static SLEDStateParserInst sParserInst;
+bool fCanSend = true;
 
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event)
@@ -69,28 +74,19 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
         UNUSED_VARIABLE(ret);
         break;
     }
-    case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:
-    {
-        break;
-    }
+
     case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
     {
-       // NRF_LOG_INFO("tx done");
+        NRF_LOG_INFO("TX DONE \n");
+        fCanSend = true;
         break;
     }
+
     case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
     {
         ret_code_t ret;
         do
         {
-            /*Get amount of data transfered*/
-           // size_t size = app_usbd_cdc_acm_rx_size(&usb_cdc_acm);
-            //NRF_LOG_INFO("rx size: %d", size);
-
-            /* It's the simple version of an echo. Note that writing doesn't
-             * block execution, and if we have a lot of characters to read and
-             * write, some characters can be missed.
-             */
             if (m_rx_buffer[0] == '\r' || m_rx_buffer[0] == '\n')
             {
                 ret = app_usbd_cdc_acm_write(&usb_cdc_acm, "\r\n", 2);
@@ -104,7 +100,6 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
 
             LEDStateParser_PutByte(&sParserInst, m_rx_buffer[0]);
 
-            /* Fetch data until internal buffer is empty */
             ret = app_usbd_cdc_acm_read(&usb_cdc_acm,
                                         m_rx_buffer,
                                         READ_SIZE);
@@ -187,33 +182,62 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
 
     increment_with_rotate(psHSV, eHSVParam);
 }
-
+/* ********************************************************************************************* */
 void LEDStateParser_HelpRequest(void* pData)
 {
-    NRF_LOG_INFO("HELP REQUEST \n");
+    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szHelpMsg, strlen(szHelpMsg)));
+    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szHelpHSVMsg, strlen(szHelpHSVMsg)));
+    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szHelpRGBMsg, strlen(szHelpRGBMsg)));
 }
-
+/* ********************************************************************************************* */
 void LEDStateParser_CMDError(void* pData)
 {
-    NRF_LOG_INFO("CMD ERROR \n");
+    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szUnknownCMD,strlen(szUnknownCMD)));
 }
-
+/* ********************************************************************************************* */
 void LEDStateParser_SetLedState(ULEDStateParams* puParams, ETypeParams eTypeParam, void* pData)
 {
+    SRGBCoordinates sRGB;
+    char szColorstr[50];
+    SButtonIRQData* psIrqData = (SButtonIRQData*)pData;
+    if(!psIrqData)
+        return;
+
     switch(eTypeParam)
     {
         case ELEDPARSER_HSV:
         {
-            NRF_LOG_INFO("HSV: H: %u S: %u V: %u \n", puParams->sHSV.H, puParams->sHSV.S, puParams->sHSV.V);
+            sprintf(szColorstr, "Color set to H:%u S:%u V:%u\n\r", puParams->sHSV.H,
+                                                                puParams->sHSV.S,
+                                                                puParams->sHSV.V);
+
+            psIrqData->psHSV->H = puParams->sHSV.H;
+            psIrqData->psHSV->S = puParams->sHSV.S;
+            psIrqData->psHSV->V = puParams->sHSV.V;
+
+            HSVtoRGB_calc(psIrqData->psHSV, &sRGB);
+            pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+
             break;
         }
 
         case ELEDPARSER_RGB:
         {
             NRF_LOG_INFO("RGB: R: %u G: %u B: %u \n", puParams->sRGB.R, puParams->sRGB.G, puParams->sRGB.B);
+            pca10059_RGBLed_Set(puParams->sRGB.R, puParams->sRGB.G, puParams->sRGB.B);
             break;
         }
     }
+
+    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szColorstr,strlen(szColorstr)));
+
+    SLEDColorState sLedColorState;
+
+    sLedColorState.H    = psIrqData->psHSV->H;
+    sLedColorState.S    = psIrqData->psHSV->S;
+    sLedColorState.V    = psIrqData->psHSV->V;
+
+    LedStateSaver_SaveLedState(psIrqData->psSaver, &sLedColorState);
 }
 
 /**
@@ -280,7 +304,7 @@ int main(void)
     sParserInfo.fnHelpRequest   = LEDStateParser_HelpRequest;
     sParserInfo.fnCMDError      = LEDStateParser_CMDError;
     sParserInfo.fnSetState      = LEDStateParser_SetLedState;
-    sParserInfo.pData           = 0;
+    sParserInfo.pData           = (void*)&sBtnIRQData;
 
     LEDStateParser_init(&sParserInst, &sParserInfo);
     
@@ -290,19 +314,6 @@ int main(void)
 
     while(1)
     {
-        while(1)
-        {
-            while(app_usbd_event_queue_process())
-            {
-
-            }
-
-            LEDStateParser_Process(&sParserInst);
-
-            LOG_BACKEND_USB_PROCESS();
-            NRF_LOG_PROCESS();
-        }
-
         /* Small delay after changing WM */
         if(eNewWM != eCurrentWM)
         {
@@ -344,6 +355,8 @@ int main(void)
         {
             
         }
+
+        LEDStateParser_Process(&sParserInst);
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }

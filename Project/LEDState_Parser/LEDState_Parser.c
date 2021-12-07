@@ -9,9 +9,10 @@
 #include "nrf_log_backend_usb.h"
 
 #define LED_STATE_PARSER_RINGBUF_SIZE   128
-#define MAX_CDM_LEN                     15
+#define MAX_CDM_LEN                     16
 #define MIN_CDM_LEN                     4 /* help */
 #define PARAM_MAX_NUMERALS              3
+#define COUNTOF_LED_PARAMS              3
 
 #define RGB_MAX_PARAMS_VALUE            255
 #define HSV_MAX_PARAM_H                 360
@@ -96,17 +97,17 @@ bool LEDStateParser_GetFirstIntVal(const uint8_t* pMas, uint32_t unMassSize,
     
     if(!pMas || !unMassSize || !pTakenBytes)
         return false;
-    
+
     for(int i = 0; i < unMassSize; ++i)
     {
-        if(i > PARAM_MAX_NUMERALS - 1)
+        if(pMas[i] == ' ')
+            break;
+
+        if(i > PARAM_MAX_NUMERALS)
             return false;
 
         if(!LEDStateParser_IsNum(pMas[i]))
             return false;
-
-        if(pMas[i] == ' ')
-            break;
         
         szVal[i] = pMas[i];
         (*pTakenBytes)++;
@@ -120,55 +121,48 @@ bool LEDStateParser_GetFirstIntVal(const uint8_t* pMas, uint32_t unMassSize,
 bool LEDStateParser_ParseParams(const uint8_t* pCMD, uint32_t unBytesInMas, 
                                 SLEDStParserCMDParams* psParams)
 {
-    uint32_t unTakenBytes = 0;
     uint32_t unTotalTakenBytes = 0;
 
     if(!pCMD || !unBytesInMas)
         return false;
 
     /* TODO: maybe make it with loop... */
-    if(!LEDStateParser_GetFirstIntVal(pCMD, unBytesInMas, &psParams->unParam1, &unTakenBytes))
+    if(!LEDStateParser_GetFirstIntVal(pCMD, unBytesInMas, &psParams->unParam1, &unTotalTakenBytes))
         return false;
-
-    unTotalTakenBytes += unTakenBytes;
 
     /* for instance: "255_0_0" we have 4 bytes after 255 */
     if(unBytesInMas - unTotalTakenBytes  < 4)
         return false;
 
-    if(*(pCMD+unTotalTakenBytes+1) != ' ')
+    if(*(pCMD+unTotalTakenBytes) != ' ')
         return false;
 
     unTotalTakenBytes++;
 
     if(!LEDStateParser_GetFirstIntVal(pCMD + unTotalTakenBytes, unBytesInMas - unTotalTakenBytes, 
-                                        &psParams->unParam2, &unTakenBytes))
+                                        &psParams->unParam2, &unTotalTakenBytes))
     {
         return false;
     }
-
-    unTotalTakenBytes += unTakenBytes;
 
     /* for instance: "255_0_0" we have 2 bytes after 255_0 */
     if(unBytesInMas - unTotalTakenBytes  < 2)
         return false;
 
-    if(*(pCMD+unTotalTakenBytes+1) != ' ')
+    if(*(pCMD+unTotalTakenBytes) != ' ')
         return false;
 
     unTotalTakenBytes++;
 
     if(!LEDStateParser_GetFirstIntVal(pCMD + unTotalTakenBytes, unBytesInMas - unTotalTakenBytes, 
-                                        &psParams->unParam3, &unTakenBytes))
+                                        &psParams->unParam3, &unTotalTakenBytes))
     {
         return false;
     }
 
-    unTotalTakenBytes += unTakenBytes;
-
     if(unBytesInMas - unTotalTakenBytes != 0)
     {
-        if(unBytesInMas - unTotalTakenBytes == 1 && (*(pCMD + unTotalTakenBytes + 1) == ' '))
+        if(unBytesInMas - unTotalTakenBytes == 1 && (*(pCMD + unTotalTakenBytes) == ' '))
             return true;
         else
             return false;
@@ -256,7 +250,7 @@ void LEDStateParser_ExecLEDState(SLEDStateParserInst* psInstance, ELEDStParserCM
 
         case LEDSTATEPARSER_SET_HSV:
         {
-            eParam = ELEDPARSER_RGB;
+            eParam = ELEDPARSER_HSV;
             uParams.sHSV.H = psParams->unParam1;
             uParams.sHSV.S = psParams->unParam2;
             uParams.sHSV.V = psParams->unParam3;
@@ -347,10 +341,10 @@ void LEDStateParser_Process(SLEDStateParserInst* psInstance)
     if(!unGetSize)
         return;
 
-    if(psInstance->unCMDBytesCount == 20)
+    if(psInstance->unCMDBytesCount == LED_STATE_PARSER_CMD_BUFSIZE)
         psInstance->unCMDBytesCount = 0;
 
-    if(psInstance->unCMDBytesCount == 0 && *pData == ' ')
+    if(psInstance->unCMDBytesCount == 0 && (*pData == ' ' || *pData == '\n'))
     {
         nrf_ringbuf_free(&m_PutData_ringbuf, unGetSize);
         return;
@@ -379,8 +373,9 @@ void LEDStateParser_Process(SLEDStateParserInst* psInstance)
 
     if(*pData == '\n' || *pData == '\r')
     {
-        NRF_LOG_INFO("Countof bytes: %u \n", psInstance->unCMDBytesCount);
-
+        if(psInstance->unCMDBytesCount == 0)
+            return;
+            
         if(psInstance->unCMDBytesCount > MAX_CDM_LEN || psInstance->unCMDBytesCount <  MIN_CDM_LEN)
         {
             if(psInstance->fnCMDError != 0)

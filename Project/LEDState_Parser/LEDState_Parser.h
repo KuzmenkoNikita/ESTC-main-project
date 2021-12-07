@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define LED_STATE_PARSER_CMD_BUFSIZE    30
+
 /** @brief HSV LED params*/
 typedef struct 
 {
@@ -54,7 +56,7 @@ typedef struct
     FnCmdErrorCallback      fnCMDError;
     FnSetLEDStateCallback   fnSetState;
     void*                   pData;
-    uint8_t                 mCMDData[20];
+    uint8_t                 mCMDData[LED_STATE_PARSER_CMD_BUFSIZE];
     uint32_t                unCMDBytesCount;
 }SLEDStateParserInst;
 
@@ -87,6 +89,12 @@ uint32_t LEDStateParser_init(SLEDStateParserInst* psInstance, SLEDStateParserInf
  */
 uint32_t LEDStateParser_PutByte(SLEDStateParserInst* psInstance, char Byte);
 
+/**
+ * @brief Parser processing
+ *
+ * @param psInstance   pointer to parser instance
+ * 
+ */
 void LEDStateParser_Process(SLEDStateParserInst* psInstance);
 
 
