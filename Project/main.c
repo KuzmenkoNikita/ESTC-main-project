@@ -217,19 +217,20 @@ void LEDStateParser_SetLedState(ULEDStateParams* puParams, ETypeParams eTypePara
 
             HSVtoRGB_calc(psIrqData->psHSV, &sRGB);
             pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+            while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szColorstr,strlen(szColorstr)));
 
             break;
         }
 
         case ELEDPARSER_RGB:
         {
-            NRF_LOG_INFO("RGB: R: %u G: %u B: %u \n", puParams->sRGB.R, puParams->sRGB.G, puParams->sRGB.B);
-            pca10059_RGBLed_Set(puParams->sRGB.R, puParams->sRGB.G, puParams->sRGB.B);
+            char szRGB[] = "Not realized yet... use HSV";
+            while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szRGB,strlen(szRGB)));
             break;
         }
     }
 
-    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szColorstr,strlen(szColorstr)));
+    
 
     SLEDColorState sLedColorState;
 
