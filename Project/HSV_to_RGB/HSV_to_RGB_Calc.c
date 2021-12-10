@@ -4,7 +4,8 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#define HSV2RGB_COEF    255/100
+#define RGB_MAX_VAL     255
+#define HSV2RGB_COEF    RGB_MAX_VAL/100
 
 #define MAX_VAL_H   360
 #define MAX_VAL_S   100
@@ -90,7 +91,36 @@ void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB)
         default: return;
     }
 }
+/* ********************************************************************************* */
+void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV)
+{
+    uint8_t rgbMin = 0;
+    uint8_t rgbMax = 0;
 
+    if(psRGB->R > RGB_MAX_VAL || psRGB->G > RGB_MAX_VAL || psRGB->B > RGB_MAX_VAL)
+        return;
+
+    rgbMin = psRGB->R < psRGB->G ? (psRGB->R < psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G  < psRGB->B ? psRGB->G  : psRGB->B);
+    rgbMax = psRGB->R > psRGB->G ? (psRGB->R >psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G > psRGB->B? psRGB->G : psRGB->B);
+
+    psHSV->V = rgbMax;
+    if (psHSV->V== 0)
+    {
+        psHSV->H = 0;
+        psHSV->S = 0;
+        return;
+    }
+
+    if (rgbMax == psRGB->R)
+        psHSV->H = 0 + 43 * (psRGB->G - psRGB->B) / (rgbMax - rgbMin);
+    else if (rgbMax == psRGB->G)
+        psHSV->H = 85 + 43 * (psRGB->B - psRGB->R) / (rgbMax - rgbMin);
+    else
+        psHSV->H = 171 + 43 * (psRGB->R - psRGB->G) / (rgbMax - rgbMin);
+
+    return;
+}
+/* ********************************************************************************* */
 void increment_with_rotate(SHSVCoordinates* psHSV, EHSVParams eParams)
 {
     if(!psHSV)

@@ -27,10 +27,18 @@ typedef struct
 /**
  * @brief Transform HSV to RGB coordinates
  *
- * @param psHSV pointer to HSV coordinates
+ * @param  pointer to HSV coordinates
  * @param psRGB pointer to RGB coordinates
  */
 void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB);
+
+/**
+ * @brief Transform RGB to HSV coordinates
+ *
+ * @param psRGB pointer to HSV coordinates
+ * @param psHSV pointer to RGB coordinates
+ */
+void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV);
 
 /**
  * @brief Increment params by one and rotate if it overflows
