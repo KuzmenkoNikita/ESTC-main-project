@@ -54,11 +54,11 @@ int32_t parser_parse_cmd(char* szParams)
 {
     for(int i = 0; i < CMD_COUNT; ++i)
     {
-        if(0 == strncpy(szParams, msCmdCtx[i].sz_cmd_name, strlen(msCmdCtx[i].sz_cmd_name)))
+        if(0 == strncmp(szParams, msCmdCtx[i].sz_cmd_name, strlen(msCmdCtx[i].sz_cmd_name)))
         {
             if(0 != msCmdCtx[i].fnParamParser(szParams + strlen(msCmdCtx[i].sz_cmd_name)))
             {
-                retuen -1;
+                return -1;
             }
         }
     }
