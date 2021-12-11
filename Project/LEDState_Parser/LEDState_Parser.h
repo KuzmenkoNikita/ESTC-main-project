@@ -79,23 +79,8 @@ typedef struct
  */
 uint32_t LEDStateParser_init(SLEDStateParserInst* psInstance, SLEDStateParserInfo* psInit);
 
-/**
- * @brief Put one byte to the parser
- *
- * @param psInstance   pointer to parser instance
- * @param Byte         Data byte 
- * 
- * @return 0 if OK, -1 if ERROR
- */
-uint32_t LEDStateParser_PutByte(SLEDStateParserInst* psInstance, char Byte);
 
-/**
- * @brief Parser processing
- *
- * @param psInstance   pointer to parser instance
- * 
- */
-void LEDStateParser_Process(SLEDStateParserInst* psInstance);
+char* parser_next_word(char* sz);
 
 
 #endif /* LED_STATE_PARSER */

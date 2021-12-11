@@ -32,6 +32,9 @@ const char szHelpMsg[]= "help - print help message\n\r";
 
 
 
+
+
+
 typedef struct 
 {
     SHSVCoordinates*    psHSV;
@@ -174,8 +177,15 @@ int main(void)
 
     while(1)
     {
+
         size_t unCMDSize = 0;
-        char pCMDBuf[55] = {0};
+        char pCMDBuf[55] = "TEST STRING 123";
+        char* p = parser_next_word(pCMDBuf);
+        char* p1 = parser_next_word(p);
+        char* p3 = parser_next_word(p1);
+
+        NRF_LOG_INFO("STR: %s, NEXT:%s LAST:%s TEST0:%u", pCMDBuf, p, p1, p3);
+
 
         if(usb_agent_process(&unCMDSize))
         {
