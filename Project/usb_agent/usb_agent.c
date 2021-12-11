@@ -10,7 +10,7 @@
 
 #define READ_SIZE 1
 #define MAX_RECVCMD_MASS_SIZE  128
-#define USB_SEND_TRY_CNT        10
+#define USB_SEND_TRY_CNT       100
 
 static struct 
 {
@@ -146,19 +146,20 @@ void usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size)
     sAgentCtx.fCMDReady = false;
 }
 /* *************************************************************************************************** */
-void usb_agent_send_buf(const char* p_buf, size_t size)
+int32_t usb_agent_send_buf(const char* p_buf, size_t size)
 {
     ret_code_t ret;
     uint32_t  try_cnt = 0;
 
     if(!p_buf || !size)
-        return;
+        return -1;
 
     do
     {
         ret = app_usbd_cdc_acm_write(&usb_cdc_acm, p_buf, size);
         ++try_cnt;
     } while (ret != NRF_SUCCESS && try_cnt <  USB_SEND_TRY_CNT);
-    
+
+    return ret == NRF_SUCCESS ? 0 : -1;
 }
 /* *************************************************************************************************** */

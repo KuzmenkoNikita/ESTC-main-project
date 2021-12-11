@@ -179,7 +179,9 @@ int main(void)
 
         if(usb_agent_process(&unCMDSize))
         {
-            NRF_LOG_INFO("NEW CMD: size %u \n", unCMDSize);
+            const char szTest[] = "Test string here!!!\n\r";
+            usb_agent_send_buf(szTest, strlen(szTest));
+
             usb_agent_get_cmd_buf(pCMDBuf, 55);
         }
 
