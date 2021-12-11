@@ -16,8 +16,8 @@
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
 #include "LedStateSaver.h"
-#include "app_usbd_cdc_acm.h"
 #include "LEDState_Parser.h"
+#include "usb.agent.h"
 
 #define WAIT_AFTER_CHANGE_WM_MS     400
 #define WAIT_APPLY_PARAM_MS         200
@@ -25,32 +25,12 @@
 #define LEDSTATESAVER_FIRST_PAGE_ADDR   0x000DD000
 #define LEDSTATESAVER_SECOND_PAGE_ADDR  0x000DE000
 
-#define READ_SIZE 1
-
-static char m_rx_buffer[READ_SIZE];
 const char szUnknownCMD[]="Unknown command! Try \"help\" for info\n\r"; 
 const char szHelpHSVMsg[]="HSV <H> <S> <V> - Set HSV LED color H = [0:360], S = [0:100], V = [0:100]\n\r";
 const char szHelpRGBMsg[]="RGB <R> <G> <B> - Set RGB LED color R = [0:255], G = [0:255], B = [0:255]\n\r";
 const char szHelpMsg[]= "help - print help message\n\r";
 
-static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
-                           app_usbd_cdc_acm_user_event_t event);
 
-#define CDC_ACM_COMM_INTERFACE  2
-#define CDC_ACM_COMM_EPIN       NRF_DRV_USBD_EPIN3
-
-#define CDC_ACM_DATA_INTERFACE  3
-#define CDC_ACM_DATA_EPIN       NRF_DRV_USBD_EPIN4
-#define CDC_ACM_DATA_EPOUT      NRF_DRV_USBD_EPOUT4
-
-APP_USBD_CDC_ACM_GLOBAL_DEF(usb_cdc_acm,
-                            usb_ev_handler,
-                            CDC_ACM_COMM_INTERFACE,
-                            CDC_ACM_DATA_INTERFACE,
-                            CDC_ACM_COMM_EPIN,
-                            CDC_ACM_DATA_EPIN,
-                            CDC_ACM_DATA_EPOUT,
-                            APP_USBD_CDC_COMM_PROTOCOL_AT_V250);
 
 typedef struct 
 {
@@ -58,59 +38,6 @@ typedef struct
     EWMTypes*           peCurrentWM;
     SLedStateSaverInst* psSaver;
 }SButtonIRQData;
-
-static SLEDStateParserInst sParserInst;
-bool fCanSend = true;
-
-static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
-                           app_usbd_cdc_acm_user_event_t event)
-{
-    switch (event)
-    {
-    case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
-    {
-        ret_code_t ret;
-        ret = app_usbd_cdc_acm_read(&usb_cdc_acm, m_rx_buffer, READ_SIZE);
-        UNUSED_VARIABLE(ret);
-        break;
-    }
-
-    case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
-    {
-        NRF_LOG_INFO("TX DONE \n");
-        fCanSend = true;
-        break;
-    }
-
-    case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
-    {
-        ret_code_t ret;
-        do
-        {
-            if (m_rx_buffer[0] == '\r' || m_rx_buffer[0] == '\n')
-            {
-                ret = app_usbd_cdc_acm_write(&usb_cdc_acm, "\r\n", 2);
-            }
-            else
-            {
-                ret = app_usbd_cdc_acm_write(&usb_cdc_acm,
-                                             m_rx_buffer,
-                                             READ_SIZE);
-            }
-
-            LEDStateParser_PutByte(&sParserInst, m_rx_buffer[0]);
-
-            ret = app_usbd_cdc_acm_read(&usb_cdc_acm,
-                                        m_rx_buffer,
-                                        READ_SIZE);
-        } while (ret == NRF_SUCCESS);
-
-        break;
-    }
-    default:
-        break;
-    }
-}
 
 
 /**
@@ -182,64 +109,6 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
 
     increment_with_rotate(psHSV, eHSVParam);
 }
-/* ********************************************************************************************* */
-void LEDStateParser_HelpRequest(void* pData)
-{
-    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szHelpMsg, strlen(szHelpMsg)));
-    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szHelpHSVMsg, strlen(szHelpHSVMsg)));
-    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szHelpRGBMsg, strlen(szHelpRGBMsg)));
-}
-/* ********************************************************************************************* */
-void LEDStateParser_CMDError(void* pData)
-{
-    while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szUnknownCMD,strlen(szUnknownCMD)));
-}
-/* ********************************************************************************************* */
-void LEDStateParser_SetLedState(ULEDStateParams* puParams, ETypeParams eTypeParam, void* pData)
-{
-    SRGBCoordinates sRGB;
-    char szColorstr[50];
-    SButtonIRQData* psIrqData = (SButtonIRQData*)pData;
-    if(!psIrqData)
-        return;
-
-    switch(eTypeParam)
-    {
-        case ELEDPARSER_HSV:
-        {
-            sprintf(szColorstr, "Color set to H:%u S:%u V:%u\n\r", puParams->sHSV.H,
-                                                                puParams->sHSV.S,
-                                                                puParams->sHSV.V);
-
-            psIrqData->psHSV->H = puParams->sHSV.H;
-            psIrqData->psHSV->S = puParams->sHSV.S;
-            psIrqData->psHSV->V = puParams->sHSV.V;
-
-            HSVtoRGB_calc(psIrqData->psHSV, &sRGB);
-            pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
-            while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szColorstr,strlen(szColorstr)));
-
-            break;
-        }
-
-        case ELEDPARSER_RGB:
-        {
-            char szRGB[] = "Not realized yet... use HSV";
-            while(NRFX_SUCCESS != app_usbd_cdc_acm_write(&usb_cdc_acm, szRGB,strlen(szRGB)));
-            break;
-        }
-    }
-
-    
-
-    SLEDColorState sLedColorState;
-
-    sLedColorState.H    = psIrqData->psHSV->H;
-    sLedColorState.S    = psIrqData->psHSV->S;
-    sLedColorState.V    = psIrqData->psHSV->V;
-
-    LedStateSaver_SaveLedState(psIrqData->psSaver, &sLedColorState);
-}
 
 /**
  * @brief Function for application main entry.
@@ -300,21 +169,20 @@ int main(void)
     uint32_t unWaitWMTimeout = 0;
 
     
-    SLEDStateParserInfo sParserInfo;
 
-    sParserInfo.fnHelpRequest   = LEDStateParser_HelpRequest;
-    sParserInfo.fnCMDError      = LEDStateParser_CMDError;
-    sParserInfo.fnSetState      = LEDStateParser_SetLedState;
-    sParserInfo.pData           = (void*)&sBtnIRQData;
-
-    LEDStateParser_init(&sParserInst, &sParserInfo);
-    
-    app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
-    ret_code_t ret = app_usbd_class_append(class_cdc_acm);
-    APP_ERROR_CHECK(ret);
+    usb_agent_init();
 
     while(1)
     {
+        size_t unCMDSize = 0;
+        char pCMDBuf[55] = {0};
+
+        if(usb_agent_process(&unCMDSize))
+        {
+            NRF_LOG_INFO("NEW CMD: size %u \n", unCMDSize);
+            usb_agent_get_cmd_buf(pCMDBuf, 55);
+        }
+
         /* Small delay after changing WM */
         if(eNewWM != eCurrentWM)
         {
@@ -352,12 +220,7 @@ int main(void)
             unTimeCnt = 0;
         }
 
-        while(app_usbd_event_queue_process())
-        {
-            
-        }
 
-        LEDStateParser_Process(&sParserInst);
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }

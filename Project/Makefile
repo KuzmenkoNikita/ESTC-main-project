@@ -63,6 +63,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c   \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c  \
   $(PROJ_DIR)/LEDState_Parser/LEDState_Parser.c \
+  $(PROJ_DIR)/usb_agent/usb_agent.c \
   
 
 # Include folders common to all targets
@@ -111,6 +112,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/modules/nrfx/drivers/include \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc/acm \
   $(PROJ_DIR)/LEDState_Parser \
+  $(PROJ_DIR)/usb_agent \
 
 
 # Libraries common to all targets
