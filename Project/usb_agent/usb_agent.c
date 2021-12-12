@@ -3,11 +3,6 @@
 #include "app_usbd_serial_num.h"
 #include "app_usbd_cdc_acm.h"
 
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
-#include "nrf_log_backend_usb.h"
-
 #define READ_SIZE 1
 #define MAX_RECVCMD_MASS_SIZE  128
 #define USB_SEND_TRY_CNT       100
@@ -66,7 +61,6 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst, app_usbd_cdc_ac
         {
             ret_code_t ret;
             ret = app_usbd_cdc_acm_read(&usb_cdc_acm, m_rx_buffer, READ_SIZE);
-            NRF_LOG_INFO("PORT OPEN\n");
             UNUSED_VARIABLE(ret);
             break;
         } 
@@ -132,18 +126,20 @@ bool usb_agent_process(size_t* p_cmd_size)
     return state;
 }
 /* *************************************************************************************************** */
-void usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size)
+int32_t usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size)
 {
     if(!p_dest_buf || !dest_buf_size)
-        return;
+        return -1;
 
     if(dest_buf_size < sAgentCtx.BytesRecved)
-        return;
+        return -1;
 
     memcpy(p_dest_buf, sAgentCtx.mRxBuffer, sAgentCtx.BytesRecved);
 
     sAgentCtx.BytesRecved = 0;
     sAgentCtx.fCMDReady = false;
+
+    return 0;
 }
 /* *************************************************************************************************** */
 int32_t usb_agent_send_buf(const char* p_buf, size_t size)
@@ -163,3 +159,8 @@ int32_t usb_agent_send_buf(const char* p_buf, size_t size)
     return ret == NRF_SUCCESS ? 0 : -1;
 }
 /* *************************************************************************************************** */
+void usb_agent_reset_cmd_buf(void)
+{
+    sAgentCtx.BytesRecved = 0;
+    sAgentCtx.fCMDReady = false;
+}

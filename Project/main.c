@@ -25,15 +25,7 @@
 #define LEDSTATESAVER_FIRST_PAGE_ADDR   0x000DD000
 #define LEDSTATESAVER_SECOND_PAGE_ADDR  0x000DE000
 
-const char szUnknownCMD[]="Unknown command! Try \"help\" for info\n\r"; 
-const char szHelpHSVMsg[]="HSV <H> <S> <V> - Set HSV LED color H = [0:360], S = [0:100], V = [0:100]\n\r";
-const char szHelpRGBMsg[]="RGB <R> <G> <B> - Set RGB LED color R = [0:255], G = [0:255], B = [0:255]\n\r";
-const char szHelpMsg[]= "help - print help message\n\r";
-
-
-
-
-
+#define MAX_CMD_BUF_SIZE                200
 
 typedef struct 
 {
@@ -112,6 +104,104 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
 
     increment_with_rotate(psHSV, eHSVParam);
 }
+/* *********************************************** */
+void parser_help_request_callback(void* p_data)
+{
+    const char szHelpHSVMsg[]="HSV <H> <S> <V> - Set HSV LED color H = [0:360], S = [0:100], V = [0:100]\n\r";
+    const char szHelpRGBMsg[]="RGB <R> <G> <B> - Set RGB LED color R = [0:255], G = [0:255], B = [0:255]\n\r";
+    const char szHelpMsg[]= "help - print help message\n\r";
+
+    if(0 != usb_agent_send_buf(szHelpHSVMsg, strlen(szHelpHSVMsg)))
+    {
+        NRF_LOG_INFO("Error send help msg \n");
+    }
+
+    if(0 != usb_agent_send_buf(szHelpRGBMsg, strlen(szHelpRGBMsg)))
+    {
+        NRF_LOG_INFO("Error send help msg \n");
+    }
+
+    if(0 != usb_agent_send_buf(szHelpMsg, strlen(szHelpMsg)))
+    {
+        NRF_LOG_INFO("Error send help msg \n");
+    }    
+
+}
+/* *********************************************** */
+void parser_cmd_error_callback(void* p_data)
+{
+    const char sz_msg[]="Incorrect command! Try \"help\" for info\n\r";
+
+    if(0 != usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    {
+        NRF_LOG_INFO("Error send set RGB msg \n");
+    } 
+}
+/* *********************************************** */
+void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data)
+{
+    char sz_msg[50];
+    SRGBCoordinates sRGB;
+    SButtonIRQData* ps_iqr_str = (SButtonIRQData*)p_data;
+    if(!ps_iqr_str)
+        return;
+
+    sprintf(sz_msg, "Color is set to R: %u, G: %u, B: %u \n\r", r,g,b);
+
+    pca10059_RGBLed_Set(r, g, b);
+
+    sRGB.R = r;
+    sRGB.G = g;
+    sRGB.B = b;
+
+    RGBtoHSV_calc(&sRGB, ps_iqr_str->psHSV);
+
+    SLEDColorState sLedColorState;
+
+    sLedColorState.H    = ps_iqr_str->psHSV->H;
+    sLedColorState.S    = ps_iqr_str->psHSV->S;
+    sLedColorState.V    = ps_iqr_str->psHSV->V;
+
+    LedStateSaver_SaveLedState(ps_iqr_str->psSaver, &sLedColorState);
+
+
+    if(0 != usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    {
+        NRF_LOG_INFO("Error send set RGB msg \n");
+    }
+}
+/* *********************************************** */
+void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data)
+{
+    char sz_msg[50];
+    SRGBCoordinates sRGB;
+    SButtonIRQData* ps_iqr_str = (SButtonIRQData*)p_data;
+    if(!ps_iqr_str)
+        return;
+
+    sprintf(sz_msg, "Color is set to H: %u, S: %u, V: %u \n\r", h,s,v);
+
+    ps_iqr_str->psHSV->H    = h;
+    ps_iqr_str->psHSV->S    = s;
+    ps_iqr_str->psHSV->V    = v;
+
+    HSVtoRGB_calc(ps_iqr_str->psHSV, &sRGB);
+    pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+
+
+    SLEDColorState sLedColorState;
+
+    sLedColorState.H    = ps_iqr_str->psHSV->H;
+    sLedColorState.S    = ps_iqr_str->psHSV->S;
+    sLedColorState.V    = ps_iqr_str->psHSV->V;
+
+    LedStateSaver_SaveLedState(ps_iqr_str->psSaver, &sLedColorState);
+
+    if(0 != usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    {
+        NRF_LOG_INFO("Error send set RGB msg \n");
+    }
+}
 
 /**
  * @brief Function for application main entry.
@@ -171,6 +261,16 @@ int main(void)
     uint32_t unTimeCnt = 0;
     uint32_t unWaitWMTimeout = 0;
 
+    SLEDStateParserInst parser_inst;
+    SLEDStateParserInfo parser_info;
+
+    parser_info.p_data          = (void*)&sBtnIRQData;
+    parser_info.help_request    = parser_help_request_callback;
+    parser_info.cmd_error       = parser_cmd_error_callback;
+    parser_info.set_rgb         = parser_cmd_set_rgb_callback;
+    parser_info.set_hsv         = parser_cmd_set_hsv_callback;
+
+    parser_init(&parser_inst, &parser_info);
     
 
     usb_agent_init();
@@ -179,20 +279,24 @@ int main(void)
     {
 
         size_t unCMDSize = 0;
-        char pCMDBuf[55] = "TEST STRING 123";
-        char* p = parser_next_word(pCMDBuf);
-        char* p1 = parser_next_word(p);
-        char* p3 = parser_next_word(p1);
-
-        NRF_LOG_INFO("STR: %s, NEXT:%s LAST:%s TEST0:%u", pCMDBuf, p, p1, p3);
-
 
         if(usb_agent_process(&unCMDSize))
         {
-            const char szTest[] = "Test string here!!!\n\r";
-            usb_agent_send_buf(szTest, strlen(szTest));
+            if(unCMDSize > MAX_CMD_BUF_SIZE)
+            {
+                usb_agent_reset_cmd_buf();
+            }
+            else
+            {
+                char p_cmd[unCMDSize + 1];
+                if(0 == usb_agent_get_cmd_buf(p_cmd, unCMDSize + 1))
+                {
+                    p_cmd[unCMDSize] = '\0';
+                    parser_parse_cmd(&parser_inst, p_cmd);
+                }
+            }
 
-            usb_agent_get_cmd_buf(pCMDBuf, 55);
+            
         }
 
         /* Small delay after changing WM */

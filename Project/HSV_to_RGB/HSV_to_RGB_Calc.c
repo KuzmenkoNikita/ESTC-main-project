@@ -100,14 +100,24 @@ void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV)
     if(psRGB->R > RGB_MAX_VAL || psRGB->G > RGB_MAX_VAL || psRGB->B > RGB_MAX_VAL)
         return;
 
-    rgbMin = psRGB->R < psRGB->G ? (psRGB->R < psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G  < psRGB->B ? psRGB->G  : psRGB->B);
-    rgbMax = psRGB->R > psRGB->G ? (psRGB->R >psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G > psRGB->B? psRGB->G : psRGB->B);
+    rgbMin = psRGB->R < psRGB->G ? (psRGB->R < psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G < psRGB->B ? psRGB->G  : psRGB->B);
+    rgbMax = psRGB->R > psRGB->G ? (psRGB->R > psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G > psRGB->B ? psRGB->G : psRGB->B);
 
     psHSV->V = rgbMax;
     if (psHSV->V== 0)
     {
+        psHSV->V = (psHSV->V * 100) / 255;
         psHSV->H = 0;
         psHSV->S = 0;
+        return;
+    }
+
+    psHSV->S = 255 * ((long)(rgbMax - rgbMin)) / psHSV->V;
+    if (psHSV->S == 0)
+    {
+        psHSV->V = (psHSV->V * 100) / 255;
+        psHSV->S = (psHSV->S * 100) / 255;
+        psHSV->H = 0;
         return;
     }
 
@@ -117,6 +127,10 @@ void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV)
         psHSV->H = 85 + 43 * (psRGB->B - psRGB->R) / (rgbMax - rgbMin);
     else
         psHSV->H = 171 + 43 * (psRGB->R - psRGB->G) / (rgbMax - rgbMin);
+
+    psHSV->H = (psHSV->H * 360) / 255;
+    psHSV->V = (psHSV->V * 100) / 255;
+    psHSV->S = (psHSV->S * 100) / 255;
 
     return;
 }

@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#define LED_STATE_PARSER_CMD_BUFSIZE    30
-
 /** @brief HSV LED params*/
 typedef struct 
 {
@@ -16,71 +14,78 @@ typedef struct
 /** @brief RGB LED params*/
 typedef struct 
 {
-    uint16_t    R;
-    uint16_t    G;
-    uint16_t    B;
+    uint8_t    R;
+    uint8_t    G;
+    uint8_t    B;
 }SLEDStParserRGB;
 
-/** @brief LED params params*/
-typedef union 
-{
-    SLEDStParserHSV sHSV;
-    SLEDStParserRGB sRGB;
-}ULEDStateParams;
-
-/** @brief LED params type*/
-typedef enum
-{
-    ELEDPARSER_HSV,
-    ELEDPARSER_RGB,
-}ETypeParams;
 
 /** @brief Help request CMD callback */
-typedef void (*FnHelpRequestCallback)(void* pData);
+typedef void (*fn_help_request)(void* p_data);
 
 /** @brief CMD error callback */
-typedef void (*FnCmdErrorCallback)(void* pData);
+typedef void (*fn_cmd_error)(void* p_data);
 
 /**
- * @brief Set led state callback
+ * @brief Set RGB LED state callback
  *
- * @param puParams   pointer to params value
- * @param eTypeParam type of params
+ * @param r         R value
+ * @param g         G value
+ * @param b         B value
+ * 
+ * @param p_data    pointer to user data
  */
-typedef void (*FnSetLEDStateCallback)(ULEDStateParams* puParams, ETypeParams eTypeParam, void* pData);
+typedef void (*fn_set_led_rgb)(uint8_t r, uint8_t g, uint8_t b, void* p_data);
+
+/**
+ * @brief Set HSV LED state callback
+ *
+ * @param h         H value
+ * @param s         S value
+ * @param v         V value
+ * 
+ * @param p_data    pointer to user data
+ */
+typedef void (*fn_set_led_hsv)(uint16_t h, uint8_t s, uint8_t v, void* p_data);
 
 /** @brief Parser instance */
 typedef struct 
 {
-    FnHelpRequestCallback   fnHelpRequest;
-    FnCmdErrorCallback      fnCMDError;
-    FnSetLEDStateCallback   fnSetState;
-    void*                   pData;
-    uint8_t                 mCMDData[LED_STATE_PARSER_CMD_BUFSIZE];
-    uint32_t                unCMDBytesCount;
+    fn_help_request         help_request;
+    fn_cmd_error            cmd_error;
+    fn_set_led_rgb          set_rgb;
+    fn_set_led_hsv          set_hsv;
+    void*                   p_data;
 }SLEDStateParserInst;
 
 /** @brief Parser init params */
 typedef struct 
 {
-    FnHelpRequestCallback   fnHelpRequest;
-    FnCmdErrorCallback      fnCMDError;
-    FnSetLEDStateCallback   fnSetState;
-    void*                   pData;
+    fn_help_request         help_request;
+    fn_cmd_error            cmd_error;
+    fn_set_led_rgb          set_rgb;
+    fn_set_led_hsv          set_hsv;
+    void*                   p_data;
 }SLEDStateParserInfo;
 
 /**
  * @brief Set led state callback
  *
- * @param psInstance   pointer to parser instance
- * @param psInit       pointer to init params
+ * @param ps_instance   pointer to parser instance
+ * @param ps_init_params       pointer to init params
  * 
  * @return 0 if OK, -1 if ERROR
  */
-uint32_t LEDStateParser_init(SLEDStateParserInst* psInstance, SLEDStateParserInfo* psInit);
+uint32_t parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo* ps_init_params);
 
+/**
+ * @brief Set led state callback
+ *
+ * @param ps_instance       pointer to parser instance
+ * @param ps_init_params    pointer to cmd string
+ */
+void parser_parse_cmd(SLEDStateParserInst* ps_instance, char* sz_cmd);
 
-char* parser_next_word(char* sz);
 
 
 #endif /* LED_STATE_PARSER */
