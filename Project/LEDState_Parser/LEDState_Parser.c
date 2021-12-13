@@ -53,15 +53,14 @@ static void parser_exec_help_cmd(SLEDStateParserInst* ps_inst)
     if(ps_inst->help_request != NULL)
     {
         const uint32_t mass_size = ARRAY_SIZE(msCmdCtx);
-        char* m_sz_info[mass_size];
+        const char* m_sz_info[mass_size];
 
         for(int i = 0; i < mass_size; ++i)
         {
-            /* May be it's bad cast... But we will not modify data */
-            m_sz_info[i] = (char*)msCmdCtx[i].sz_help_info;
+            m_sz_info[i] = msCmdCtx[i].sz_help_info;
         }
 
-        ps_inst->help_request(ps_inst->p_data, (const char**)m_sz_info, mass_size);
+        ps_inst->help_request(ps_inst->p_data, m_sz_info, mass_size);
     }
 }
 /* ******************************************************** */
