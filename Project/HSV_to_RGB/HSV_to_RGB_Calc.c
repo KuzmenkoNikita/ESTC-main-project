@@ -1,8 +1,5 @@
 #include "HSV_to_RGB_Calc.h"
-#include "nrf_log.h"
-#include "nrf_log_ctrl.h"
-#include "nrf_log_default_backends.h"
-#include "nrf_log_backend_usb.h"
+#include "nordic_common.h"
 
 #define RGB_MAX_VAL     255
 #define HSV2RGB_COEF    RGB_MAX_VAL/100
@@ -94,14 +91,28 @@ void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB)
 /* ********************************************************************************* */
 void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV)
 {
-    uint8_t rgbMin = 0;
+    uint8_t rgbMin = RGB_MAX_VAL;
     uint8_t rgbMax = 0;
+
+    if(!psRGB || !psHSV)
+        return;
 
     if(psRGB->R > RGB_MAX_VAL || psRGB->G > RGB_MAX_VAL || psRGB->B > RGB_MAX_VAL)
         return;
 
-    rgbMin = psRGB->R < psRGB->G ? (psRGB->R < psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G < psRGB->B ? psRGB->G  : psRGB->B);
-    rgbMax = psRGB->R > psRGB->G ? (psRGB->R > psRGB->B ? psRGB->R : psRGB->B) : (psRGB->G > psRGB->B ? psRGB->G : psRGB->B);
+    uint8_t mParams[] = {psRGB->R, psRGB->G, psRGB->B};
+
+    for(uint8_t i = 0; i < ARRAY_SIZE(mParams); ++i)
+    {
+        if(mParams[i] > rgbMax)
+            rgbMax = mParams[i];
+    }
+
+    for(uint8_t i = 0; i < ARRAY_SIZE(mParams); ++i)
+    {
+        if(mParams[i] < rgbMin)
+            rgbMin = mParams[i];
+    }
 
     psHSV->V = rgbMax;
     if (psHSV->V== 0)

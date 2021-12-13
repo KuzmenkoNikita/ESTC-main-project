@@ -2,6 +2,7 @@
 #define LED_STATE_PARSER
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /** @brief HSV LED params*/
 typedef struct 
@@ -20,8 +21,12 @@ typedef struct
 }SLEDStParserRGB;
 
 
-/** @brief Help request CMD callback */
-typedef void (*fn_help_request)(void* p_data);
+/** @brief Help request CMD callback 
+ * @param p_m_sz_info - pointer to string array with help info
+ * @param array_size - array size
+ * 
+*/
+typedef void (*fn_help_request)(void* p_data, const char** p_m_sz_info, uint32_t  array_size);
 
 /** @brief CMD error callback */
 typedef void (*fn_cmd_error)(void* p_data);
@@ -74,9 +79,9 @@ typedef struct
  * @param ps_instance   pointer to parser instance
  * @param ps_init_params       pointer to init params
  * 
- * @return 0 if OK, -1 if ERROR
+ * @return true if OK, false if ERROR
  */
-uint32_t parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo* ps_init_params);
+bool parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo* ps_init_params);
 
 /**
  * @brief Set led state callback
@@ -84,7 +89,7 @@ uint32_t parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo
  * @param ps_instance       pointer to parser instance
  * @param ps_init_params    pointer to cmd string
  */
-void parser_parse_cmd(SLEDStateParserInst* ps_instance, char* sz_cmd);
+void parser_parse_cmd(SLEDStateParserInst* ps_instance, const char* sz_cmd);
 
 
 

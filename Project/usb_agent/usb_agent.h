@@ -8,9 +8,9 @@
 /**
  * @brief USB agent initialization
  * 
- * @return 0 if OK, -1 if ERROR
+ * @return true if OK, false if ERROR
  */
-int32_t usb_agent_init(void);
+bool usb_agent_init(void);
 
 /**
  * @brief USB agent processing
@@ -27,7 +27,7 @@ bool usb_agent_process(size_t* p_cmd_size);
  * @param p_dest_buf pointer to array, where cmd will be saved.
  * @param dest_buf_size - user buf size
  */
-int32_t usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size);
+bool usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size);
 
 /**
  * @brief send user array to USB
@@ -35,9 +35,9 @@ int32_t usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size);
  * @param p_buf pointer to array to send
  * @param size - array size
  * 
- * @return 0 if OK, -1 if ERROR
+ * @return true if OK, false if ERROR
  */
-int32_t usb_agent_send_buf(const char* p_buf, size_t size);
+bool usb_agent_send_buf(const char* p_buf, size_t size);
 
 /**
  * @brief reset cmd array

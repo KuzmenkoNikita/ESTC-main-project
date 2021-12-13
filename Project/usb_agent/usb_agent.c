@@ -1,15 +1,15 @@
-#include "usb.agent.h"
+#include "usb_agent.h"
 #include "app_usbd.h"
 #include "app_usbd_serial_num.h"
 #include "app_usbd_cdc_acm.h"
 
 #define READ_SIZE 1
-#define MAX_RECVCMD_MASS_SIZE  128
-#define USB_SEND_TRY_CNT       100
+#define MAX_RECVCMD_SIZE        128
+#define USB_SEND_TRY_CNT        100
 
 static struct 
 {
-    char        mRxBuffer[MAX_RECVCMD_MASS_SIZE];
+    char        mRxBuffer[MAX_RECVCMD_SIZE];
     uint32_t    BytesRecved;
     bool        fCMDReady;    
 }sAgentCtx;
@@ -38,7 +38,7 @@ APP_USBD_CDC_ACM_GLOBAL_DEF(usb_cdc_acm,
 static ret_code_t usb_agent_save_byte(char chNewByte)
 {
     ret_code_t ret;
-    if(sAgentCtx.BytesRecved < MAX_RECVCMD_MASS_SIZE)
+    if(sAgentCtx.BytesRecved < MAX_RECVCMD_SIZE)
     {
         sAgentCtx.mRxBuffer[sAgentCtx.BytesRecved] = chNewByte;
         ++sAgentCtx.BytesRecved;
@@ -95,16 +95,16 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst, app_usbd_cdc_ac
     }
 }
 /* *************************************************************************************************** */
-int32_t usb_agent_init(void)
+bool usb_agent_init(void)
 {
     sAgentCtx.BytesRecved = 0;
     sAgentCtx.fCMDReady = false;
 
     app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&usb_cdc_acm);
     if(NRF_SUCCESS != app_usbd_class_append(class_cdc_acm))
-        return -1;
+        return false;
 
-    return 0;
+    return true;
 
 }
 /* *************************************************************************************************** */
@@ -126,29 +126,29 @@ bool usb_agent_process(size_t* p_cmd_size)
     return state;
 }
 /* *************************************************************************************************** */
-int32_t usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size)
+bool usb_agent_get_cmd_buf(char* p_dest_buf, size_t dest_buf_size)
 {
     if(!p_dest_buf || !dest_buf_size)
-        return -1;
+        return false;
 
     if(dest_buf_size < sAgentCtx.BytesRecved)
-        return -1;
+        return false;
 
     memcpy(p_dest_buf, sAgentCtx.mRxBuffer, sAgentCtx.BytesRecved);
 
     sAgentCtx.BytesRecved = 0;
     sAgentCtx.fCMDReady = false;
 
-    return 0;
+    return true;
 }
 /* *************************************************************************************************** */
-int32_t usb_agent_send_buf(const char* p_buf, size_t size)
+bool usb_agent_send_buf(const char* p_buf, size_t size)
 {
     ret_code_t ret;
     uint32_t  try_cnt = 0;
 
     if(!p_buf || !size)
-        return -1;
+        return false;
 
     do
     {
@@ -156,7 +156,7 @@ int32_t usb_agent_send_buf(const char* p_buf, size_t size)
         ++try_cnt;
     } while (ret != NRF_SUCCESS && try_cnt <  USB_SEND_TRY_CNT);
 
-    return ret == NRF_SUCCESS ? 0 : -1;
+    return (ret == NRF_SUCCESS);
 }
 /* *************************************************************************************************** */
 void usb_agent_reset_cmd_buf(void)

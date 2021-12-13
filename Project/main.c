@@ -17,7 +17,7 @@
 #include "HSV_to_RGB_Calc.h"
 #include "LedStateSaver.h"
 #include "LEDState_Parser.h"
-#include "usb.agent.h"
+#include "usb_agent.h"
 
 #define WAIT_AFTER_CHANGE_WM_MS     400
 #define WAIT_APPLY_PARAM_MS         200
@@ -105,34 +105,22 @@ void IncrementHSVByWormode(SHSVCoordinates* psHSV, EWMTypes eWM)
     increment_with_rotate(psHSV, eHSVParam);
 }
 /* *********************************************** */
-void parser_help_request_callback(void* p_data)
+void parser_help_request_callback(void* p_data, const char** p_m_sz_info, uint32_t  array_size)
 {
-    const char szHelpHSVMsg[]="HSV <H> <S> <V> - Set HSV LED color H = [0:360], S = [0:100], V = [0:100]\n\r";
-    const char szHelpRGBMsg[]="RGB <R> <G> <B> - Set RGB LED color R = [0:255], G = [0:255], B = [0:255]\n\r";
-    const char szHelpMsg[]= "help - print help message\n\r";
-
-    if(0 != usb_agent_send_buf(szHelpHSVMsg, strlen(szHelpHSVMsg)))
+    for(uint32_t i = 0; i < array_size; ++i)
     {
-        NRF_LOG_INFO("Error send help msg \n");
+        if(!usb_agent_send_buf(p_m_sz_info[i], strlen(p_m_sz_info[i])))
+        {
+            NRF_LOG_INFO("Error send help msg \n");
+        }
     }
-
-    if(0 != usb_agent_send_buf(szHelpRGBMsg, strlen(szHelpRGBMsg)))
-    {
-        NRF_LOG_INFO("Error send help msg \n");
-    }
-
-    if(0 != usb_agent_send_buf(szHelpMsg, strlen(szHelpMsg)))
-    {
-        NRF_LOG_INFO("Error send help msg \n");
-    }    
-
 }
 /* *********************************************** */
 void parser_cmd_error_callback(void* p_data)
 {
     const char sz_msg[]="Incorrect command! Try \"help\" for info\n\r";
 
-    if(0 != usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    if(!usb_agent_send_buf(sz_msg, strlen(sz_msg)))
     {
         NRF_LOG_INFO("Error send set RGB msg \n");
     } 
@@ -165,7 +153,7 @@ void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data)
     LedStateSaver_SaveLedState(ps_iqr_str->psSaver, &sLedColorState);
 
 
-    if(0 != usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    if(!usb_agent_send_buf(sz_msg, strlen(sz_msg)))
     {
         NRF_LOG_INFO("Error send set RGB msg \n");
     }
@@ -197,7 +185,7 @@ void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data)
 
     LedStateSaver_SaveLedState(ps_iqr_str->psSaver, &sLedColorState);
 
-    if(0 != usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    if(!usb_agent_send_buf(sz_msg, strlen(sz_msg)))
     {
         NRF_LOG_INFO("Error send set RGB msg \n");
     }
@@ -289,7 +277,7 @@ int main(void)
             else
             {
                 char p_cmd[unCMDSize + 1];
-                if(0 == usb_agent_get_cmd_buf(p_cmd, unCMDSize + 1))
+                if(usb_agent_get_cmd_buf(p_cmd, unCMDSize + 1))
                 {
                     p_cmd[unCMDSize] = '\0';
                     parser_parse_cmd(&parser_inst, p_cmd);

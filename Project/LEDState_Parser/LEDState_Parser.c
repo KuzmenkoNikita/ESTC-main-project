@@ -1,95 +1,108 @@
 #include "LEDState_Parser.h"
+#include "nordic_common.h"
 #include <string.h>
-#include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
 
-#define MAX_CMD_NAME_LEN            30
-#define CMD_COUNT                   3
-
+#define  SZ_HSV_CMD_INFO    "HSV <H> <S> <V> - Set HSV LED color H = [0:360], S = [0:100], V = [0:100]\n\r"
+#define  SZ_RGB_CMD_INFO    "RGB <R> <G> <B> - Set RGB LED color R = [0:255], G = [0:255], B = [0:255]\n\r"
+#define  SZ_HELP_CMD_INFO   "help - print help message\n\r"   
 /* ******************************************************** */
-typedef int32_t (*FnParseCmdParams)(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len);
+typedef bool (*FnParseCmdParams)(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len);
 
 /* ******************************************************** */
 typedef struct 
 {
-    char                sz_cmd_name[MAX_CMD_NAME_LEN];
-    FnParseCmdParams    fnParamParser;
+    const char*          sz_cmd_name;
+    FnParseCmdParams     fn_param_parser;
+    const char*          sz_help_info;
 }SCmdCtx;
 
 /* ******************************************************** */
-static char* parser_next_word(char* sz);
-static int32_t parser_parse_help_cmd_params(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len);
-static int32_t parser_parse_set_rgb_cmd_params(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len);
-static int32_t parser_parse_set_hsv_cmd_params(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len);
-static bool parser_check_isdigits(char* sz_cmd);
+static const char* parser_next_word(const char* sz);
+static bool parser_parse_help_cmd_params(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len);
+static bool parser_parse_set_rgb_cmd_params(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len);
+static bool parser_parse_set_hsv_cmd_params(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len);
+static bool parser_check_isdigits(const char* sz_cmd);
 /* ******************************************************** */
 
-static SCmdCtx msCmdCtx[CMD_COUNT] =    {{"help", parser_parse_help_cmd_params},
-                                        {"RGB ", parser_parse_set_rgb_cmd_params},
-                                        {"HSV ", parser_parse_set_hsv_cmd_params}};
+static SCmdCtx msCmdCtx[] = {{"help", parser_parse_help_cmd_params, SZ_HELP_CMD_INFO},
+                            {"RGB ", parser_parse_set_rgb_cmd_params, SZ_RGB_CMD_INFO},
+                            {"HSV ", parser_parse_set_hsv_cmd_params, SZ_HSV_CMD_INFO}};
 
 /* ******************************************************** */
-static bool parser_check_isdigits(char* sz_cmd)
+static bool parser_check_isdigits(const char* sz_cmd)
 {
-    for(uint32_t i = 0; i < strlen(sz_cmd); ++i)
+    uint32_t cmd_len = strlen(sz_cmd);
+    for(uint32_t i = 0; i < cmd_len; ++i)
     {
-        if(isdigit((int)sz_cmd[i]) == 0)
+        if(isdigit((int)sz_cmd[i]) == 0 && isspace((int)sz_cmd[i]) == 0)
         {
-            if(isspace((int)sz_cmd[i]) == 0)
-            {
-                return false;
-            }
+            return false;
         }
     }
 
     return true;
 }
 /* ******************************************************** */
-static int32_t parser_parse_help_cmd_params(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len)
+static void parser_exec_help_cmd(SLEDStateParserInst* ps_inst)
+{
+    if(!ps_inst)
+        return;
+
+    if(ps_inst->help_request != NULL)
+    {
+        const uint32_t mass_size = ARRAY_SIZE(msCmdCtx);
+        char* m_sz_info[mass_size];
+
+        for(int i = 0; i < mass_size; ++i)
+        {
+            /* May be it's bad cast... But we will not modify data */
+            m_sz_info[i] = (char*)msCmdCtx[i].sz_help_info;
+        }
+
+        ps_inst->help_request(ps_inst->p_data, (const char**)m_sz_info, mass_size);
+    }
+}
+/* ******************************************************** */
+static bool parser_parse_help_cmd_params(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len)
 {
     if(!ps_inst || !sz_cmd)
-        return -1;
+        return false;
 
     if(strlen(sz_cmd) == name_len)
     {
-        if(ps_inst->help_request != NULL)
-        {
-            ps_inst->help_request(ps_inst->p_data);
-        }
+        parser_exec_help_cmd(ps_inst);
 
-        return 0; 
+        return true; 
     }
     else if (0 == parser_next_word(sz_cmd))
     {
-        if(ps_inst->help_request != NULL)
-        {
-            ps_inst->help_request(ps_inst->p_data);
-        }
+        parser_exec_help_cmd(ps_inst);
 
-        return 0;
+        return true;
     }
 
-    return -1;
+    return false;
 }
 
 /* ******************************************************** */
-static int32_t parser_parse_set_rgb_cmd_params(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len)
+static bool parser_parse_set_rgb_cmd_params(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len)
 {
     const uint8_t params_cnt = 3;
     uint32_t m_params[params_cnt];
 
     if(!ps_inst || !sz_cmd)
-        return -1;
+        return false;
 
     if(strlen(sz_cmd) <= name_len)
     {
-        return -1;
+        return false;
     }
 
     if(!parser_check_isdigits(sz_cmd + name_len))
     {
-        return -1;
+        return false;
     }
 
     for(uint32_t i = 0; i < params_cnt; ++i)
@@ -102,7 +115,7 @@ static int32_t parser_parse_set_rgb_cmd_params(SLEDStateParserInst* ps_inst, cha
         }
         else
         {
-            return -1;
+            return false;
         }
     }
 
@@ -111,32 +124,32 @@ static int32_t parser_parse_set_rgb_cmd_params(SLEDStateParserInst* ps_inst, cha
         for(uint32_t i = 0; i < params_cnt; ++i)
         {
             if(m_params[i] > 255)
-                return -1;
+                return false;
         }
 
         ps_inst->set_rgb(m_params[0], m_params[1], m_params[2], ps_inst->p_data);
     }
 
-    return 0;
+    return true;
 
 }
 /* ******************************************************** */
-static int32_t parser_parse_set_hsv_cmd_params(SLEDStateParserInst* ps_inst, char* sz_cmd, uint32_t name_len)
+static bool parser_parse_set_hsv_cmd_params(SLEDStateParserInst* ps_inst, const char* sz_cmd, uint32_t name_len)
 {
     const uint8_t params_cnt = 3;
     uint32_t m_params[params_cnt];
 
     if(!ps_inst || !sz_cmd)
-        return -1;
+        return false;
 
     if(strlen(sz_cmd) <= name_len)
     {
-        return -1;
+        return false;
     }
 
     if(!parser_check_isdigits(sz_cmd + name_len))
     {
-        return -1;
+        return false;
     }
 
     for(uint32_t i = 0; i < params_cnt; ++i)
@@ -149,27 +162,27 @@ static int32_t parser_parse_set_hsv_cmd_params(SLEDStateParserInst* ps_inst, cha
         }
         else
         {
-            return -1;
+            return false;
         }
     }
 
     if(ps_inst->set_hsv != NULL)
     {
         if(m_params[0] > 360 || m_params[1] > 100 || m_params[2] > 100)
-            return -1;
+            return false;
 
         ps_inst->set_hsv(m_params[0], m_params[1], m_params[2], ps_inst->p_data);
     }
 
-    return 0;   
+    return true;   
 }
 /* ******************************************************** */
-static char* parser_next_word(char* sz)
+static const char* parser_next_word(const char* sz)
 {
     uint32_t space_cnt = 0;
 
     if(!sz)
-        return  0;
+        return NULL;
 
     for(int i = 0; i < strlen(sz); ++i)
     {
@@ -183,28 +196,29 @@ static char* parser_next_word(char* sz)
         }
     }
     
-    return 0;
+    return NULL;
 }
 
 /* ******************************************************** */
-void parser_parse_cmd(SLEDStateParserInst* ps_inst, char* sz_cmd)
+void parser_parse_cmd(SLEDStateParserInst* ps_inst, const char* sz_cmd)
 {
     if(!ps_inst)
         return;
 
-    for(int i = 0; i < CMD_COUNT; ++i)
+    for(int i = 0; i < ARRAY_SIZE(msCmdCtx); ++i)
     {
-        if(0 == strncmp(sz_cmd, msCmdCtx[i].sz_cmd_name, strlen(msCmdCtx[i].sz_cmd_name)))
+        uint32_t name_len = strlen(msCmdCtx[i].sz_cmd_name);
+        if(0 == strncmp(sz_cmd, msCmdCtx[i].sz_cmd_name, name_len))
         {
-            if(0 != msCmdCtx[i].fnParamParser)
+            if(NULL != msCmdCtx[i].fn_param_parser)
             {
-                if(0 != msCmdCtx[i].fnParamParser(ps_inst, sz_cmd, strlen(msCmdCtx[i].sz_cmd_name)))
+                if(!msCmdCtx[i].fn_param_parser(ps_inst, sz_cmd, name_len))
                 {
                     ps_inst->cmd_error(ps_inst->p_data);
                 }
-
-                return;
             }
+
+            return;
         }
     }
 
@@ -213,10 +227,10 @@ void parser_parse_cmd(SLEDStateParserInst* ps_inst, char* sz_cmd)
     return;
 } 
 /* ******************************************************** */
-uint32_t parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo* ps_init_params)
+bool parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo* ps_init_params)
 {
     if(!ps_instance || !ps_init_params)
-        return -1;
+        return false;
 
     ps_instance->cmd_error      = ps_init_params->cmd_error;
     ps_instance->help_request   = ps_init_params->help_request;
@@ -224,7 +238,7 @@ uint32_t parser_init(SLEDStateParserInst* ps_instance, const SLEDStateParserInfo
     ps_instance->set_hsv        = ps_init_params->set_hsv;
     ps_instance->set_rgb        = ps_init_params->set_rgb;
 
-    return 0;
+    return true;
 }
 
 
