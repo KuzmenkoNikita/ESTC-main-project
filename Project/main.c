@@ -79,9 +79,10 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
+#include "estc_service.h"
 
 
-#define DEVICE_NAME                     "KUZMENKO NIKITA SERGEEVICH"                                  /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "ESTC"                                  /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -109,10 +110,10 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        
 
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
-    {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}
+    {ESTC_UUID_SERVICE, BLE_UUID_TYPE_BLE}
 };
 
-static int8_t tx_pwr_lvl = 100;
+ble_estc_service_t m_estc_service;
 
 static void advertising_start(void);
 
@@ -210,6 +211,9 @@ static void services_init(void)
     qwr_init.error_handler = nrf_qwr_error_handler;
 
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = estc_ble_service_init(&m_estc_service);
     APP_ERROR_CHECK(err_code);
 
 }
@@ -432,7 +436,6 @@ static void advertising_init(void)
     init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
 
     init.srdata.name_type = BLE_ADVDATA_FULL_NAME;
-    init.srdata.p_tx_power_level = &tx_pwr_lvl;
     init.srdata.include_appearance = false;
 
     init.config.ble_adv_fast_enabled  = true;
@@ -527,8 +530,6 @@ int main(void)
     services_init();
     conn_params_init();
 
-    // Start execution.
-    NRF_LOG_INFO("ESTC advertising example started.");
     application_timers_start();
 
     advertising_start();
