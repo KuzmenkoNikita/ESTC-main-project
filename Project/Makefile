@@ -93,7 +93,8 @@ SRC_FILES += \
   $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   $(SDK_ROOT)/components/ble/common/ble_advdata.c \
   $(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
-  $(PROJ_DIR)/ble_service/estc_service.c \
+  $(PROJ_DIR)/ble_communicator/ble_service/estc_service.c \
+  $(PROJ_DIR)/ble_communicator/ble_communicator.c \
   $(PROJ_DIR)/main.c \
 
 # Include folders common to all targets
@@ -228,7 +229,8 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/ble/ble_dtm \
   $(SDK_ROOT)/components/ble/ble_advertising \
   $(SDK_ROOT)/components \
-  $(PROJ_DIR)/ble_service \
+  $(PROJ_DIR)/ble_communicator/ble_service/ \
+  $(PROJ_DIR)/ble_communicator  \
 
 # Libraries common to all targets
 LIB_FILES += \
@@ -253,7 +255,7 @@ CFLAGS += -DS140
 CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
-CFLAGS += -Wall -Werror
+CFLAGS += -Wall -Werror 
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing

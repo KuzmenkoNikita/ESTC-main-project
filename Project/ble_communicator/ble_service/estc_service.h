@@ -39,13 +39,14 @@
 #define ESTC_UUID_BASE        {0xd5, 0x79, 0x5c, 0xb6, 0xbb, 0x30, 0x11, 0xec, \
                               0x84, 0x22, 0x02, 0x42, 0xAB, 0x7E, 0x17, 0xAC}
 
-#define ESTC_UUID_SERVICE 0x16C1
-
+#define ESTC_UUID_SERVICE   0x16C1
+#define ESTC_UUID_CHAR_1    0x16C2
 
 typedef struct
 {
-    uint16_t    service_handle;
-    uint8_t     uuid_type;
+    uint16_t                    service_handle;
+    uint8_t                     uuid_type;
+    ble_gatts_char_handles_t    char1_handle;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);
