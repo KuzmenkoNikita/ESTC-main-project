@@ -489,11 +489,14 @@ static void timers_init(void)
 }
 /**@brief Function for application main entry.
  */
+
+extern uint32_t nF32ws;
+
 int main(void)
 {
     // Initialize.
     log_init();
-    //timers_init();
+    timers_init();
     /*
     
     buttons_leds_init();
@@ -518,7 +521,14 @@ int main(void)
 
     ble_communicaror_init(0, 0);
 
-    while(1);
+    while(1)
+    
+    {
+        NRF_LOG_INFO("VAL %u", nF32ws);
+        LOG_BACKEND_USB_PROCESS();
+        NRF_LOG_PROCESS();
+    }
+    
 }
 
 

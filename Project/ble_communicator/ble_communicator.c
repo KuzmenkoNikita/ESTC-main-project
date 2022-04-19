@@ -41,16 +41,16 @@ static void conn_params_error_handler(uint32_t nrf_error);
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt);
 static void advertising_start(void);
 /* ********************************************************************************** */
+ble_estc_service_t m_estc_service;
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
-ble_estc_service_t m_estc_service;
 /* ********************************************************************************** */
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
     {ESTC_UUID_SERVICE, BLE_UUID_TYPE_BLE}
 };
 /* ********************************************************************************** */
-/**@brief Function for handling BLE events.
+/** @brief Function for handling BLE events.
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
  * @param[in]   p_context   Unused.
@@ -62,13 +62,17 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_DISCONNECTED:
+        {
             NRF_LOG_INFO("Disconnected.");
             break;
+        }
 
         case BLE_GAP_EVT_CONNECTED:
+        {
             NRF_LOG_INFO("Connected.");
 
             break;
+        }
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
         {
@@ -80,7 +84,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             };
             err_code = sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
             APP_ERROR_CHECK(err_code);
-        } break;
+
+            break;
+        } 
 
         case BLE_GATTC_EVT_TIMEOUT:
             // Disconnect on GATT Client timeout event.
@@ -91,12 +97,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
 
         case BLE_GATTS_EVT_TIMEOUT:
+        {
             // Disconnect on GATT Server timeout event.
             NRF_LOG_DEBUG("GATT Server Timeout.");
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
                                              BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
             break;
+        }
 
         default:
             // No implementation needed.
@@ -129,7 +137,7 @@ static void ble_stack_init(void)
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 }
 
-/**@brief Function for the GAP initialization.
+/** @brief Function for the GAP initialization.
  *
  * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
  *          device including the device name, appearance, and the preferred connection parameters.
