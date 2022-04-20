@@ -133,6 +133,8 @@
 #define NRFX_TIMER_ENABLED 1
 #endif
 
+#define PWM_ENABLED 1
+#define PWM0_ENABLED 1
 // </e>
 
 #endif

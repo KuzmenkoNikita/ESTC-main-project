@@ -94,7 +94,7 @@ int main(void)
 
     ble_comm_init_t ble_comm_init;
 
-    ble_comm_init.p_ctx             = (void*)sLedCoords;
+    ble_comm_init.p_ctx             = (void*)&sLedCoords;
     ble_comm_init.led_set_color_cb  = ble_set_led_color_component;
 
     ble_communicaror_init(&ble_communicator, &ble_comm_init);
