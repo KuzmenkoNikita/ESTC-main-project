@@ -17,6 +17,7 @@ typedef struct
     uint16_t                    service_handle;
     uint8_t                     uuid_type;
     ble_gatts_char_handles_t    char1_handle;
+    uint16_t                    desc_handle;
 } ble_estc_service_t;
 
 /**

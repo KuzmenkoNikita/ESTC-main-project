@@ -22,7 +22,6 @@ void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
 /* **************************************************************************************** */
 bool estc_ble_service_init(ble_estc_service_t *service)
 {
-    ret_code_t error_code = NRF_SUCCESS;
     ble_uuid_t service_uuid;
     ble_uuid128_t base_uuid = {ESTC_UUID_BASE};
 
@@ -38,6 +37,23 @@ bool estc_ble_service_init(ble_estc_service_t *service)
     if(NRF_SUCCESS != estc_ble_add_characteristics(service))
         return false;
 
+
+    ret_code_t error_code = NRF_SUCCESS;
+    ble_gatts_attr_md_t desc_md = {0};
+
+    desc_md.rd_auth = 0;
+    desc_md.wr_auth = 0;
+    desc_md.vlen    = 0;
+    desc_md.vloc    = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&desc_md.read_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&desc_md.write_perm);
+
+    ble_uuid_t          attr_uuid;
+
+    attr_uuid.uuid = BLE_UUID_DESCRIPTOR_CHAR_USER_DESC;
+    error_code = sd_ble_uuid_vs_add(&base_uuid, &attr_uuid.type);
+    APP_ERROR_CHECK(error_code); 
+    
     uint8_t attr_value[]  = "Your User description";
     const uint16_t attr_len   = sizeof(attr_value);
     
@@ -48,11 +64,12 @@ bool estc_ble_service_init(ble_estc_service_t *service)
     attr.max_len        = attr_len;
     attr.init_offs      = 0;
     attr.p_value        = attr_value;
-    attr.p_attr_md      = &attr_md;
+    attr.p_attr_md      = &desc_md;
     attr.p_uuid         = &attr_uuid;
-    
-    error_code = sd_ble_gatts_descriptor_add(char_handle, &attr, &p_our_service->descr_handle);
+
+    error_code = sd_ble_gatts_descriptor_add(service->char1_handle.value_handle, &attr, &service->desc_handle);
     APP_ERROR_CHECK(error_code); 
+
 
     NRF_SDH_BLE_OBSERVER(m_estc_serv_observer, ESTC_SERVICE_BLE_OBSERVER_PRIO, estc_service_on_ble_evt, NULL);
 

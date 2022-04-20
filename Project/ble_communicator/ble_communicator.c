@@ -203,10 +203,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
  */
 static void services_init(void)
 {
-    ret_code_t         err_code;
-
-    err_code = estc_ble_service_init(&m_estc_service);
-    APP_ERROR_CHECK(err_code);
+    //estc_ble_service_init(&m_estc_service);
 }
 
 /** @brief Function for handling the Connection Parameters Module.
