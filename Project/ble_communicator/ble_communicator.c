@@ -29,19 +29,19 @@
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)                  /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                       /**< Number of attempts before giving up the connection parameter negotiation. */
 /* ********************************************************************************** */
-static void ble_stack_init(void);
+static bool ble_stack_init(void);
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context);
-static void gap_params_init(void);
-static void gatt_init(void);
-static void advertising_init(void);
+static bool gap_params_init(void);
+static bool gatt_init(void);
+static bool advertising_init(void);
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt);
-static void services_init(void);
-static void conn_params_init(void);
+static bool services_init(ble_communicator_t* p_ctx);
+static bool conn_params_init(void);
 static void conn_params_error_handler(uint32_t nrf_error);
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt);
-static void advertising_start(void);
+static bool advertising_start(void);
 /* ********************************************************************************** */
-ble_estc_service_t m_estc_service;
+BLE_ESTC_SERVICE_DEF(m_estc_service);
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
 /* ********************************************************************************** */
@@ -116,25 +116,21 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
  *
  *  @details Initializes the SoftDevice and the BLE event interrupt.
  */
-static void ble_stack_init(void)
+static bool ble_stack_init(void)
 {
-    ret_code_t err_code;
+    if(NRF_SUCCESS != nrf_sdh_enable_request())
+        return false;
 
-    err_code = nrf_sdh_enable_request();
-    APP_ERROR_CHECK(err_code);
-
-    // Configure the BLE stack using the default settings.
-    // Fetch the start address of the application RAM.
     uint32_t ram_start = 0;
-    err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start))
+        return false;
 
-    // Enable BLE stack.
-    err_code = nrf_sdh_ble_enable(&ram_start);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != nrf_sdh_ble_enable(&ram_start))
+        return false;
 
-    // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
+
+    return true;
 }
 
 /** @brief Function for the GAP initialization.
@@ -142,21 +138,22 @@ static void ble_stack_init(void)
  * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
  *          device including the device name, appearance, and the preferred connection parameters.
  */
-static void gap_params_init(void)
+static bool gap_params_init(void)
 {
-    ret_code_t              err_code;
     ble_gap_conn_params_t   gap_conn_params;
     ble_gap_conn_sec_mode_t sec_mode;
 
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
 
-    err_code = sd_ble_gap_device_name_set(&sec_mode,
+    if(NRF_SUCCESS != sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)DEVICE_NAME,
-                                          strlen(DEVICE_NAME));
-    APP_ERROR_CHECK(err_code);
+                                          strlen(DEVICE_NAME)))
+    {
+        return false;
+    }
 
-	err_code = sd_ble_gap_appearance_set(BLE_APPEARANCE_UNKNOWN);
-	APP_ERROR_CHECK(err_code);
+	if(NRF_SUCCESS != sd_ble_gap_appearance_set(BLE_APPEARANCE_UNKNOWN))
+        return false;
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
 
@@ -165,16 +162,20 @@ static void gap_params_init(void)
     gap_conn_params.slave_latency     = SLAVE_LATENCY;
     gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
 
-    err_code = sd_ble_gap_ppcp_set(&gap_conn_params);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != sd_ble_gap_ppcp_set(&gap_conn_params))
+        return false;
+
+    return true;
 }
 
 /** @brief Function for initializing the GATT module.
  */
-static void gatt_init(void)
+static bool gatt_init(void)
 {
-    ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != nrf_ble_gatt_init(&m_gatt, NULL))
+        return false;
+
+    return true;
 }
 
 /** @brief Function for handling advertising events.
@@ -185,8 +186,6 @@ static void gatt_init(void)
  */
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
-    //ret_code_t err_code;
-
     switch (ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
@@ -199,11 +198,64 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
+void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
+{
+    
+    ble_communicator_t* p_communicator = (ble_communicator_t*)p_ctx;
+
+    ble_led_components color_component;
+
+    switch(char_uuid)
+    {
+        case ESTC_UUID_CHAR_LED_H:
+        {
+            color_component = BLE_LED_COMPONENT_H;
+
+            if(write_val > 360)
+                return;
+
+            break;
+        }
+        case ESTC_UUID_CHAR_LED_S:
+        {
+            color_component = BLE_LED_COMPONENT_S;
+
+            if(write_val > 255)
+                return;
+
+            break;
+        }
+
+        case ESTC_UUID_CHAR_LED_V:
+        {
+            color_component = BLE_LED_COMPONENT_V;
+
+            if(write_val > 255)
+                return;
+
+            break;
+        }
+
+        default: return;
+    }
+
+    if(NULL != p_communicator->led_set_color_cb)
+    {
+        p_communicator->led_set_color_cb(color_component, write_val, p_communicator->p_ctx);
+    }
+
+    NRF_LOG_INFO("Write: UUID: %u, VAL: %u", char_uuid, write_val);
+}
+
 /** @brief Function for initializing services that will be used by the application.
  */
-static void services_init(void)
+static bool services_init(ble_communicator_t* p_ctx)
 {
-    //estc_ble_service_init(&m_estc_service);
+    ble_estc_service_info estc_service_info;
+    estc_service_info.fn_char_write_callback = estc_service_write_cb;
+    estc_service_info.p_ctx = (void*)p_ctx;
+
+    return estc_ble_service_init(&m_estc_service, &estc_service_info);
 }
 
 /** @brief Function for handling the Connection Parameters Module.
@@ -222,8 +274,7 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
 
     if (p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
     {
-        //err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-        //APP_ERROR_CHECK(err_code);
+
     }
 }
 
@@ -239,9 +290,8 @@ static void conn_params_error_handler(uint32_t nrf_error)
 
 /** @brief Function for initializing the Connection Parameters module.
  */
-static void conn_params_init(void)
+static bool conn_params_init(void)
 {
-    ret_code_t             err_code;
     ble_conn_params_init_t cp_init;
 
     memset(&cp_init, 0, sizeof(cp_init));
@@ -255,15 +305,16 @@ static void conn_params_init(void)
     cp_init.evt_handler                    = on_conn_params_evt;
     cp_init.error_handler                  = conn_params_error_handler;
 
-    err_code = ble_conn_params_init(&cp_init);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != ble_conn_params_init(&cp_init))
+        return false;
+
+    return true;
 }
 
 /** @brief Function for initializing the Advertising functionality.
  */
-static void advertising_init(void)
+static bool advertising_init(void)
 {
-    ret_code_t             err_code;
     ble_advertising_init_t init;
 
     memset(&init, 0, sizeof(init));
@@ -283,29 +334,49 @@ static void advertising_init(void)
 
     init.evt_handler = on_adv_evt;
 
-    err_code = ble_advertising_init(&m_advertising, &init);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != ble_advertising_init(&m_advertising, &init))
+        return false;
 
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
+
+    return true;
 }
 
 /** @brief Function for starting advertising.
  */
-static void advertising_start(void)
+static bool advertising_start(void)
 {
-    ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(err_code);
+    if(NRF_SUCCESS != ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST))
+        return false;
+
+    return true;
 }
 
-int32_t ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params)
+bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params)
 {
-    ble_stack_init();
-    gap_params_init();
-    gatt_init();
-    advertising_init();
-    services_init();
-    conn_params_init();
-    advertising_start();
+    p_ctx->led_set_color_cb = p_init_params->led_set_color_cb;
+    p_ctx->p_ctx            = p_init_params->p_ctx;
 
-    return 0;
+    if(!ble_stack_init())
+        return false;
+
+    if(!gap_params_init())
+        return false;
+
+    if(!gatt_init())
+        return false;
+
+    if(!advertising_init())
+        return false;
+
+    if(!services_init(p_ctx))
+        return false;
+
+    if(!conn_params_init())
+        return false;
+
+    if(!advertising_start())
+        return false;
+
+    return true;
 }
