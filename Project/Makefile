@@ -98,6 +98,7 @@ SRC_FILES += \
   $(PROJ_DIR)/pca10059_led/pca100059_rgb_led/pca10059_rgb_led.c \
   $(PROJ_DIR)/HSV_to_RGB/HSV_to_RGB_Calc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(PROJ_DIR)/main.c \
 
 

@@ -43,5 +43,14 @@ typedef struct
  */
 bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params);
 
+/**
+ * @brief Notify led color component (unacknowledged message)
+ *
+ * @param p_ctx             pointer to module instance
+ * @param color             color component
+ * @param value             color component value
+ */
+bool ble_communicator_notify_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value);
+
 
 #endif /* BLE_COMMUNICATOR__ */

@@ -8,10 +8,10 @@
 /* ***************************************************************************** */
 #define ESTC_SERVICE_BLE_OBSERVER_PRIO      3
 /* ***************************************************************************** */
-#define BLE_ESTC_SERVICE_DEF(_name)                                                                          \
-static ble_estc_service_t _name;                                                                             \
+#define BLE_ESTC_SERVICE_DEF(_name)                                                                 \
+static ble_estc_service_t _name;                                                                    \
 NRF_SDH_BLE_OBSERVER(_name ## _obs,                                                                 \
-                     ESTC_SERVICE_BLE_OBSERVER_PRIO,                                                     \
+                     ESTC_SERVICE_BLE_OBSERVER_PRIO,                                                \
                      estc_service_on_ble_evt, &_name)
 /* ***************************************************************************** */
 #define ESTC_UUID_BASE        {0xd5, 0x79, 0x5c, 0xb6, 0xbb, 0x30, 0x11, 0xec, \
@@ -63,5 +63,15 @@ bool estc_ble_service_init(ble_estc_service_t *service, ble_estc_service_info* p
  * @brief calback for handling service events
  */
 void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
+
+/**
+ * @brief notify characteristic
+ *
+ * @param conn_handle   Handle of the peripheral connection
+ * @param service       pointer to ESTC service instance
+ * @param char_uuid     char uuiid
+ * @param value         char value to indicate
+ */
+bool estc_service_notify_char(uint16_t conn_handle, ble_estc_service_t *service, uint16_t char_uuid, uint16_t value);
 
 #endif /* ESTC_SERVICE_H__ */

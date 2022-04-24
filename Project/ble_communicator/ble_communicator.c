@@ -29,7 +29,7 @@
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)                  /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                       /**< Number of attempts before giving up the connection parameter negotiation. */
 /* ********************************************************************************** */
-static bool ble_stack_init(void);
+static bool ble_stack_init(ble_communicator_t* p_ctx);
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context);
 static bool gap_params_init(void);
 static bool gatt_init(void);
@@ -44,6 +44,7 @@ static bool advertising_start(void);
 BLE_ESTC_SERVICE_DEF(m_estc_service);
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
+static uint16_t conn_handle = BLE_CONN_HANDLE_INVALID;
 /* ********************************************************************************** */
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
@@ -64,11 +65,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
         {
             NRF_LOG_INFO("Disconnected.");
+            conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
         }
 
         case BLE_GAP_EVT_CONNECTED:
         {
+            conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             NRF_LOG_INFO("Connected.");
 
             break;
@@ -116,8 +119,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
  *
  *  @details Initializes the SoftDevice and the BLE event interrupt.
  */
-static bool ble_stack_init(void)
+static bool ble_stack_init(ble_communicator_t* p_ctx)
 {
+    if(!p_ctx)
+        return false;
+
     if(NRF_SUCCESS != nrf_sdh_enable_request())
         return false;
 
@@ -251,6 +257,9 @@ void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
  */
 static bool services_init(ble_communicator_t* p_ctx)
 {
+    if(!p_ctx)
+        return false;
+
     ble_estc_service_info estc_service_info;
     estc_service_info.fn_char_write_callback = estc_service_write_cb;
     estc_service_info.p_ctx = (void*)p_ctx;
@@ -351,13 +360,13 @@ static bool advertising_start(void)
 
     return true;
 }
-
+/* ***************************************************************************************************** */
 bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params)
 {
     p_ctx->led_set_color_cb = p_init_params->led_set_color_cb;
     p_ctx->p_ctx            = p_init_params->p_ctx;
 
-    if(!ble_stack_init())
+    if(!ble_stack_init(p_ctx))
         return false;
 
     if(!gap_params_init())
@@ -379,4 +388,37 @@ bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_pa
         return false;
 
     return true;
+}
+/* ***************************************************************************************************** */
+bool ble_communicator_notify_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value)
+{
+    if(!p_ctx)
+        return false;
+
+    uint16_t char_uuid = 0;
+
+    switch(color)
+    {
+        case BLE_LED_COMPONENT_H:
+        {
+            char_uuid = ESTC_UUID_CHAR_LED_H;
+            break;
+        }
+
+        case BLE_LED_COMPONENT_S:
+        {
+            char_uuid = ESTC_UUID_CHAR_LED_S;
+            break;
+        }
+
+        case BLE_LED_COMPONENT_V:
+        {
+            char_uuid = ESTC_UUID_CHAR_LED_V;
+            break;
+        }
+
+        default: return false;
+    }
+
+    return estc_service_notify_char(conn_handle, &m_estc_service, char_uuid, value);
 }

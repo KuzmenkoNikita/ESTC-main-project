@@ -133,7 +133,7 @@ static ret_code_t estc_ble_add_ledctrl_char(ble_estc_service_t *service, uint16_
     char_md.char_props.auth_signed_wr   = 0;
     char_md.char_props.broadcast        = 0;
     char_md.char_props.indicate         = 0;
-    char_md.char_props.notify           = 0;
+    char_md.char_props.notify           = 1;
     char_md.char_props.read             = 1;
     char_md.char_props.write            = 1;
     char_md.char_props.write_wo_resp    = 0;
@@ -201,4 +201,45 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     }
 
     return NRF_SUCCESS;
+}
+/* **************************************************************************************************** */
+bool estc_service_notify_char(uint16_t conn_handle, ble_estc_service_t *service, uint16_t char_uuid, uint16_t value)
+{
+    ble_gatts_hvx_params_t params;
+    uint16_t len = sizeof(value);
+
+    memset(&params, 0, sizeof(params));
+    params.type   = BLE_GATT_HVX_NOTIFICATION;
+
+    switch(char_uuid)
+    {
+        case ESTC_UUID_CHAR_LED_H:
+        {
+            params.handle = service->char_led_h_handle.value_handle;
+            break;
+        }   
+
+        case ESTC_UUID_CHAR_LED_S:
+        {
+            params.handle = service->char_led_s_handle.value_handle;
+            break;
+        } 
+
+        case ESTC_UUID_CHAR_LED_V:
+        {
+            params.handle = service->char_led_v_handle.value_handle;
+            break;
+        } 
+
+        default: return false;
+    }
+
+
+    params.p_data = (const uint8_t*)&value;
+    params.p_len  = &len;
+//BLE_GATTS_EVT_HVC
+    if(NRF_SUCCESS != sd_ble_gatts_hvx(conn_handle, &params))
+        return false;
+
+    return true;
 }
