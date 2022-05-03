@@ -15,13 +15,25 @@
 /* **************************************************************************************** */
 #define USER_DESC_MAX_SIZE                  20
 #define LED_CHARACTERISTIC_MAX_LEN          2
+#define LED_CHARACTERISTICS_CNT             3
+/* **************************************************************************************** */
+typedef struct estc_service
+{
+    ble_estc_service_t*         p_service;
+    uint16_t                    uuid;
+    ble_gatts_char_handles_t*   p_char_handle;
+    const char*                 user_desc_string;
+    bool                        read;
+    bool                        write;
+    bool                        notify;
+    bool                        indicate;
+}led_ctrl_char_params;
 /* **************************************************************************************** */
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
-static ret_code_t estc_ble_add_ledctrl_char(ble_estc_service_t *service, uint16_t uuid, 
-                                    ble_gatts_char_handles_t* p_char_handle,
-                                    const char* user_desc_string);
+static ret_code_t estc_ble_add_ledctrl_char(led_ctrl_char_params* p_char_params);
 static void on_write(ble_estc_service_t *service, ble_evt_t const * p_ble_evt);
+
 /* **************************************************************************************** */
 bool estc_ble_service_init(ble_estc_service_t *service, ble_estc_service_info* p_init_info)
 {
@@ -115,16 +127,17 @@ void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
  * @param p_char_handle     pointer to char handle
  * @param user_desc_string  UTF-8 string with char description
  */
-static ret_code_t estc_ble_add_ledctrl_char(ble_estc_service_t *service, uint16_t uuid, 
-                                    ble_gatts_char_handles_t* p_char_handle,
-                                    const char* user_desc_string)
+static ret_code_t estc_ble_add_ledctrl_char(led_ctrl_char_params* p_char_params)
 {
-    if(strlen(user_desc_string) > USER_DESC_MAX_SIZE)
+    if(!p_char_params)
+        return NRF_ERROR_SDK_COMMON_ERROR_BASE;
+
+    if(strlen(p_char_params->user_desc_string) > USER_DESC_MAX_SIZE)
         return NRF_ERROR_SDK_COMMON_ERROR_BASE;
 
     ble_uuid_t service_uuid;
-    service_uuid.type = service->uuid_type;
-    service_uuid.uuid = uuid;
+    service_uuid.type = p_char_params->p_service->uuid_type;
+    service_uuid.uuid = p_char_params->uuid;
 
     ble_gatts_char_md_t char_md = { 0 };
     char_md.char_ext_props.reliable_wr  = 0;
@@ -132,18 +145,18 @@ static ret_code_t estc_ble_add_ledctrl_char(ble_estc_service_t *service, uint16_
 
     char_md.char_props.auth_signed_wr   = 0;
     char_md.char_props.broadcast        = 0;
-    char_md.char_props.indicate         = 0;
-    char_md.char_props.notify           = 1;
-    char_md.char_props.read             = 1;
-    char_md.char_props.write            = 1;
+    char_md.char_props.indicate         = p_char_params->indicate;
+    char_md.char_props.notify           = p_char_params->notify;
+    char_md.char_props.read             = p_char_params->read;
+    char_md.char_props.write            = p_char_params->write;
     char_md.char_props.write_wo_resp    = 0;
 
     char_md.char_user_desc_max_size     = USER_DESC_MAX_SIZE;
-    char_md.char_user_desc_size         = strlen(user_desc_string);
+    char_md.char_user_desc_size         = strlen(p_char_params->user_desc_string);
 
     char_md.p_cccd_md                   = NULL;
     char_md.p_char_pf                   = NULL;
-    char_md.p_char_user_desc            = (const uint8_t*)user_desc_string;
+    char_md.p_char_user_desc            = (const uint8_t*)p_char_params->user_desc_string;
     char_md.p_sccd_md                   = NULL;
     char_md.p_user_desc_md              = NULL;
     
@@ -165,10 +178,10 @@ static ret_code_t estc_ble_add_ledctrl_char(ble_estc_service_t *service, uint16_
     attr_char_value.p_uuid      = &service_uuid;
     attr_char_value.p_value     = 0;
 
-    return sd_ble_gatts_characteristic_add(service->service_handle,
+    return sd_ble_gatts_characteristic_add(p_char_params->p_service->service_handle,
                                            &char_md,
                                            &attr_char_value,
-                                           p_char_handle);    
+                                           p_char_params->p_char_handle);    
 }                        
 
 /**
@@ -178,24 +191,20 @@ static ret_code_t estc_ble_add_ledctrl_char(ble_estc_service_t *service, uint16_
  */
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
-    typedef struct 
+    if(!service)
+        return NRF_ERROR_BASE_NUM;
+
+    led_ctrl_char_params m_led_char_params[LED_CHARACTERISTICS_CNT] = 
     {
-        uint16_t                    uuid;
-        ble_gatts_char_handles_t*   p_char_handle;
-        char*                       desc_string;
-    }led_char_params;
-    
-    led_char_params m_led_char_params[3] = {{ESTC_UUID_CHAR_LED_H, &service->char_led_h_handle, "Led hue"},
-                                        {ESTC_UUID_CHAR_LED_S, &service->char_led_s_handle, "Led sat"},
-                                        {ESTC_UUID_CHAR_LED_V, &service->char_led_v_handle, "Led val"}};
+        {service, ESTC_UUID_CHAR_LED_V, &service->char_led_v_handle, "Led hue", false, false, true, false},
+        {service, ESTC_UUID_CHAR_LED_S, &service->char_led_s_handle, "Led sat", false, false, false, true},
+        {service, ESTC_UUID_CHAR_LED_H, &service->char_led_h_handle, "Led val", true, true, false, false},
+    };
 
     ret_code_t err_code = NRF_SUCCESS;
-    for(uint8_t i = 0; i < 3; ++i)
+    for(uint8_t i = 0; i < LED_CHARACTERISTICS_CNT; ++i)
     {
-        err_code = estc_ble_add_ledctrl_char(service, 
-                                            m_led_char_params[i].uuid, 
-                                            m_led_char_params[i].p_char_handle,
-                                            m_led_char_params[i].desc_string);
+        err_code = estc_ble_add_ledctrl_char(&m_led_char_params[i]);
         if(err_code != NRF_SUCCESS)
             return err_code;
     }

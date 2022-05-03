@@ -1,0 +1,26 @@
+{
+    "files.associations": {
+        "atomic": "c",
+        "*.tcc": "c",
+        "cstdint": "c",
+        "random": "c",
+        "nrf_log.h": "c",
+        "nrf.h": "c",
+        "app_error.h": "c",
+        "nrf_sdh.h": "c",
+        "nrf_section_iter.h": "c",
+        "fds.h": "c",
+        "peer_manager.h": "c",
+        "bsp_btn_ble.h": "c",
+        "bsp.h": "c",
+        "boards.h": "c",
+        "nrf_gpio.h": "c",
+        "nrfx_config.h": "c",
+        "sdk_config.h": "c",
+        "stdint.h": "c",
+        "ble_lbs.h": "c",
+        "sdk_macros.h": "c",
+        "nrf_sdh_ble.h": "c",
+        "nrfx_pwm.h": "c"
+    },
+}

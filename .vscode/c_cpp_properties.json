@@ -1,0 +1,67 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                /*"/usr/include/linux",*/
+                /*"${workspaceFolder}/**", */
+                /*"/usr/local/gcc-arm-none-eabi-9-2020-q2-update/arm-none-eabi/include",*/
+                "${workspaceFolder}/Project/ESTC-NSDK/components/toolchain/cmsis/include",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/sensorsim",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/button",
+                "${workspaceFolder}/Project/ESTC-NSDK/integration/nrfx",
+                "${workspaceFolder}/Project/ESTC-NSDK/modules/nrfx",
+                "${workspaceFolder}/Project/ESTC-NSDK/modules/nrfx/hal",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/boards",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/bsp",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/ble/peer_manager",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/fds",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/timer",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/experimental_section_vars",
+                "${workspaceFolder}/Project/config",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/util",
+                "${workspaceFolder}/Project/ESTC-NSDK/modules/nrfx/mdk",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/log",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/softdevice/common",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/toolchain/cmsis/include",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/log/src",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/softdevice/s140/headers",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/ble/common",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/ble/ble_advertising",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/atomic",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/ble/nrf_ble_gatt",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/ble/nrf_ble_qwr",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/pwr_mgmt",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/strerror",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/memobj",
+                "${workspaceFolder}/Project/ESTC-NSDK/components/libraries/balloc",
+                "${workspaceFolder}/Project/ble_communicator/ble_service",
+                "${workspaceFolder}/Project/ble_communicator",
+                "${workspaceFolder}/Project/pca10059_led/pca100059_rgb_led",
+                "${workspaceFolder}/Project/HSV_to_RGB",
+                "${workspaceFolder}/Project/ESTC-NSDK/modules/nrfx/drivers/include"
+            ],
+            "defines": [
+                "NRF52840_XXAA",
+                "NRFX_PWM_ENABLED"
+            ],
+            "compilerArgs": [
+                "-mcpu=cortex-m4",
+                "-mthumb",
+                "-mabi=aapcs",
+                "-mfloat-abi=hard",
+                "-mfpu=fpv4-sp-d16",
+                "-ffunction-sections",
+                "-fdata-sections",
+                "-fno-strict-aliasing",
+                "-fno-builtin",
+                "-fshort-enums"
+            ],
+            "cStandard": "c99",
+            //"compilerPath": "/usr/bin/gcc",
+            "compilerPath": "/usr/local/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-gcc",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}
