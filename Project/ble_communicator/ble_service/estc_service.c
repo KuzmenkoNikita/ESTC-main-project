@@ -42,6 +42,7 @@ bool estc_ble_service_init(ble_estc_service_t *service, ble_estc_service_info* p
 
     service->fn_char_write_cb   = p_init_info->fn_char_write_callback;
     service->p_ctx              = p_init_info->p_ctx;
+    service->fn_tx_done         = p_init_info->fn_tx_done_callback;
 
     if(NRF_SUCCESS != sd_ble_uuid_vs_add(&base_uuid, &service->uuid_type))
         return false;
@@ -110,6 +111,12 @@ void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GATTS_EVT_WRITE:
         {
             on_write(service, p_ble_evt);
+            break;
+        }
+
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+        {
+            service->fn_tx_done(service->p_ctx);
             break;
         }
 
@@ -211,14 +218,32 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     return NRF_SUCCESS;
 }
+
 /* **************************************************************************************************** */
-bool estc_service_notify_char(uint16_t conn_handle, ble_estc_service_t *service, uint16_t char_uuid, uint16_t value)
+bool estc_service_send_char_value(uint16_t conn_handle, ble_estc_service_t *service, 
+                                uint16_t char_uuid, uint16_t value, ble_estc_send_type send_method)
 {
     ble_gatts_hvx_params_t params;
     uint16_t len = sizeof(value);
 
     memset(&params, 0, sizeof(params));
-    params.type   = BLE_GATT_HVX_NOTIFICATION;
+
+    switch(send_method)
+    {
+        case BLE_ESTC_SEND_BY_NOTIFICATION:
+        {
+            params.type   = BLE_GATT_HVX_NOTIFICATION;
+            break;
+        }
+
+        case BLE_ESTC_SEND_BY_INDICATION:
+        {
+            params.type   = BLE_GATT_HVX_INDICATION;
+            break;
+        }
+
+        default: return false;
+    }
 
     switch(char_uuid)
     {
@@ -243,12 +268,12 @@ bool estc_service_notify_char(uint16_t conn_handle, ble_estc_service_t *service,
         default: return false;
     }
 
-
     params.p_data = (const uint8_t*)&value;
     params.p_len  = &len;
-//BLE_GATTS_EVT_HVC
+
     if(NRF_SUCCESS != sd_ble_gatts_hvx(conn_handle, &params))
         return false;
 
     return true;
 }
+

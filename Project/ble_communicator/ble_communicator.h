@@ -26,6 +26,7 @@ typedef struct
 {
     ble_led_set_color_component led_set_color_cb;
     void*                       p_ctx;
+    uint32_t                    tx_queue_size;
 }ble_communicator_t;
 
 /** @brief BLE communicator init params */
@@ -49,8 +50,9 @@ bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_pa
  * @param p_ctx             pointer to module instance
  * @param color             color component
  * @param value             color component value
+ * @param is_acknowledged   if true, sending would acknowledged by reciever
  */
-bool ble_communicator_notify_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value);
+bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value);
 
 
 #endif /* BLE_COMMUNICATOR__ */

@@ -40,6 +40,7 @@ static bool conn_params_init(void);
 static void conn_params_error_handler(uint32_t nrf_error);
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt);
 static bool advertising_start(void);
+void estc_service_tx_done_callback(void* p_ctx);
 /* ********************************************************************************** */
 BLE_ESTC_SERVICE_DEF(m_estc_service);
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
@@ -262,6 +263,7 @@ static bool services_init(ble_communicator_t* p_ctx)
 
     ble_estc_service_info estc_service_info;
     estc_service_info.fn_char_write_callback = estc_service_write_cb;
+    estc_service_info.fn_tx_done_callback   = estc_service_tx_done_callback;
     estc_service_info.p_ctx = (void*)p_ctx;
 
     return estc_ble_service_init(&m_estc_service, &estc_service_info);
@@ -365,6 +367,7 @@ bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_pa
 {
     p_ctx->led_set_color_cb = p_init_params->led_set_color_cb;
     p_ctx->p_ctx            = p_init_params->p_ctx;
+    p_ctx->tx_queue_size    = 0;
 
     if(!ble_stack_init(p_ctx))
         return false;
@@ -388,37 +391,60 @@ bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_pa
         return false;
 
     return true;
-}
+} 
 /* ***************************************************************************************************** */
-bool ble_communicator_notify_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value)
+void estc_service_tx_done_callback(void* p_ctx)
+{
+    if(!p_ctx)
+        return;
+
+    ble_communicator_t* p_module = (ble_communicator_t*)p_ctx;
+    
+    if(p_module->tx_queue_size > 0)
+    {
+        --p_module->tx_queue_size;
+    }
+}
+
+/* ***************************************************************************************************** */
+bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value)
 {
     if(!p_ctx)
         return false;
 
     uint16_t char_uuid = 0;
+    ble_estc_send_type send_type;
 
     switch(color)
     {
         case BLE_LED_COMPONENT_H:
         {
             char_uuid = ESTC_UUID_CHAR_LED_H;
-            break;
+            return false; /* Don't supported yet */
         }
 
         case BLE_LED_COMPONENT_S:
         {
             char_uuid = ESTC_UUID_CHAR_LED_S;
+
+            if(p_ctx->tx_queue_size > 0)
+                return false;
+
+            send_type = BLE_ESTC_SEND_BY_INDICATION;
+            ++p_ctx->tx_queue_size;
+
             break;
         }
 
         case BLE_LED_COMPONENT_V:
         {
             char_uuid = ESTC_UUID_CHAR_LED_V;
+            send_type = BLE_ESTC_SEND_BY_NOTIFICATION;
             break;
         }
 
         default: return false;
     }
 
-    return estc_service_notify_char(conn_handle, &m_estc_service, char_uuid, value);
+    return estc_service_send_char_value(conn_handle, &m_estc_service, char_uuid, value, send_type);
 }

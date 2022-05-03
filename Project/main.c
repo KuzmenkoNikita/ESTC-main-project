@@ -29,10 +29,12 @@
 
 #include "nrfx_timer.h"
 
-#define TIMER_PERIOD_MS     500
+#define TIMER_V_PERIOD_MS     500
+#define TIMER_S_PERIOD_MS     700
 
 static ble_communicator_t ble_communicator;
-static nrfx_timer_t m_timer = NRFX_TIMER_INSTANCE(3);                            
+static nrfx_timer_t m_timer_v = NRFX_TIMER_INSTANCE(4);
+static nrfx_timer_t m_timer_s = NRFX_TIMER_INSTANCE(3);                             
 
 /**@brief Function for initializing the nrf log module.
  */
@@ -97,15 +99,6 @@ void main_tmr_callback(nrf_timer_event_t event_type, void* p_context)
     {
         case NRF_TIMER_EVENT_COMPARE0:
         {
-            if(psLedCoords->S == 100)
-            {
-                psLedCoords->S = 0;
-            }
-            else
-            {
-                ++psLedCoords->S;
-            }
-
             if(psLedCoords->V == 0)
             {
                 psLedCoords->V = 100;
@@ -115,10 +108,23 @@ void main_tmr_callback(nrf_timer_event_t event_type, void* p_context)
                 --psLedCoords->V;
             }
 
-            SRGBCoordinates sRGB;
-            HSVtoRGB_calc(psLedCoords, &sRGB);
+            ble_communicator_send_color(&ble_communicator, BLE_LED_COMPONENT_V, psLedCoords->V);
 
-            pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+            break;
+        }
+
+        case NRF_TIMER_EVENT_COMPARE1:
+        {
+            if(psLedCoords->S == 100)
+            {
+                psLedCoords->S = 0;
+            }
+            else
+            {
+                ++psLedCoords->S;
+            }
+
+            ble_communicator_send_color(&ble_communicator, BLE_LED_COMPONENT_S, psLedCoords->S);
 
             break;
         }
@@ -128,6 +134,11 @@ void main_tmr_callback(nrf_timer_event_t event_type, void* p_context)
             break;
         }
     }
+
+    SRGBCoordinates sRGB;
+    HSVtoRGB_calc(psLedCoords, &sRGB);
+
+    pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
 }
 
 int main(void)
@@ -145,10 +156,15 @@ int main(void)
     sTmrCfg.bit_width = NRF_TIMER_BIT_WIDTH_32;
     sTmrCfg.p_context = (void*)&sLedCoords;
 
-    nrfx_timer_init(&m_timer, &sTmrCfg, main_tmr_callback);
-    uint32_t unTicks = nrfx_timer_ms_to_ticks(&m_timer, TIMER_PERIOD_MS);
-    nrfx_timer_extended_compare(&m_timer, NRF_TIMER_CC_CHANNEL0, unTicks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
-    nrfx_timer_enable(&m_timer);
+    nrfx_timer_init(&m_timer_v, &sTmrCfg, main_tmr_callback);
+    uint32_t unTicks = nrfx_timer_ms_to_ticks(&m_timer_v, TIMER_V_PERIOD_MS);
+    nrfx_timer_extended_compare(&m_timer_v, NRF_TIMER_CC_CHANNEL0, unTicks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
+    nrfx_timer_enable(&m_timer_v);
+
+    nrfx_timer_init(&m_timer_s, &sTmrCfg, main_tmr_callback);
+    unTicks = nrfx_timer_ms_to_ticks(&m_timer_s, TIMER_S_PERIOD_MS);
+    nrfx_timer_extended_compare(&m_timer_s, NRF_TIMER_CC_CHANNEL1, unTicks, NRF_TIMER_SHORT_COMPARE1_CLEAR_MASK, true);
+    nrfx_timer_enable(&m_timer_s);
 
     
     pca10059_RGBLed_init();
@@ -162,7 +178,6 @@ int main(void)
 
     while(1)
     {
-        ble_communicator_notify_color(&ble_communicator, BLE_LED_COMPONENT_V, sLedCoords.V);
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
     }

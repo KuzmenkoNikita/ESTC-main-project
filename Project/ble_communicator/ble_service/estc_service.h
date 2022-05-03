@@ -31,6 +31,12 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                                             
  */
 typedef void (*char_write_callback) (uint16_t char_uuid, uint32_t write_val, void* p_ctx);
 
+/**
+ * @brief Handle Value Notification transmission complete callback
+ * @param p_ctx         contex passed to callback
+ */
+typedef void (*char_tx_done_callback) (void* p_ctx);
+
 /** @brief estc ble service instance */
 typedef struct
 {
@@ -40,14 +46,23 @@ typedef struct
     ble_gatts_char_handles_t    char_led_s_handle;
     ble_gatts_char_handles_t    char_led_v_handle;
     char_write_callback         fn_char_write_cb;
+    char_tx_done_callback       fn_tx_done;
     void*                       p_ctx;
 } ble_estc_service_t;
+
+/** @brief sending method */
+typedef enum
+{
+    BLE_ESTC_SEND_BY_NOTIFICATION,
+    BLE_ESTC_SEND_BY_INDICATION
+}ble_estc_send_type;
 
 /** @brief estc ble service init param */
 typedef struct 
 {
-    char_write_callback fn_char_write_callback;
-    void*               p_ctx;
+    char_write_callback     fn_char_write_callback;
+    char_tx_done_callback   fn_tx_done_callback;
+    void*                   p_ctx;
 }ble_estc_service_info;
 
 
@@ -65,13 +80,15 @@ bool estc_ble_service_init(ble_estc_service_t *service, ble_estc_service_info* p
 void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
 
 /**
- * @brief notify characteristic
+ * @brief send characteristic value 
  *
  * @param conn_handle   Handle of the peripheral connection
  * @param service       pointer to ESTC service instance
  * @param char_uuid     char uuiid
  * @param value         char value to indicate
+ * @param send_method   indication or notification
  */
-bool estc_service_notify_char(uint16_t conn_handle, ble_estc_service_t *service, uint16_t char_uuid, uint16_t value);
+bool estc_service_send_char_value(uint16_t conn_handle, ble_estc_service_t *service, 
+                                    uint16_t char_uuid, uint16_t value, ble_estc_send_type send_method);
 
 #endif /* ESTC_SERVICE_H__ */
