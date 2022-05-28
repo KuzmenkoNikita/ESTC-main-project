@@ -99,6 +99,7 @@ SRC_FILES += \
   $(PROJ_DIR)/HSV_to_RGB/HSV_to_RGB_Calc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
+  $(PROJ_DIR)/LedStateSaver/BLE_LedStateSaver/BLE_LedStateSaver.c \
   $(PROJ_DIR)/main.c \
 
 
@@ -238,6 +239,7 @@ INC_FOLDERS += \
   $(PROJ_DIR)/ble_communicator  \
   $(PROJ_DIR)/pca10059_led/pca100059_rgb_led \
   $(PROJ_DIR)/HSV_to_RGB \
+  $(PROJ_DIR)/LedStateSaver/BLE_LedStateSaver \
 
 # Libraries common to all targets
 LIB_FILES += \

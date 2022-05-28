@@ -1,3 +1,6 @@
+#ifndef HSV2RGB_CALC
+#define HSV2RGB_CALC
+
 #include <stdint.h>
 
 /** @brief HSV Params */
@@ -40,4 +43,4 @@ void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB);
  */
 void increment_with_rotate(SHSVCoordinates* psHSV, EHSVParams eParams);
 
-
+#endif /* HSV2RGB_CALC */

@@ -27,9 +27,10 @@
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
 
+#include "BLE_LedStateSaver.h"
 
 static ble_communicator_t ble_communicator;
-                           
+            static bool is_connected = false;               
 /**@brief Function for initializing the nrf log module.
  */
 static void log_init(void)
@@ -80,7 +81,7 @@ void ble_set_led_color_component(ble_led_components color_component, uint16_t va
 
         default: return;
     }
-
+is_connected = true;
     SRGBCoordinates sRGB;
     HSVtoRGB_calc(p_hsv_color, &sRGB);
 
@@ -104,10 +105,30 @@ int main(void)
 
     ble_communicaror_init(&ble_communicator, &ble_comm_init);
 
+    ble_ledsaver_inst ledsaver_inst;
+    ble_ledsaver_init ble_ledsaver_init;
+
+    ble_ledsaver_init.first_page = 0x000DE000;
+    ble_ledsaver_init.second_page = 0x000DD000;
+
+
+    
+
     while(1)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
+
+    if(is_connected)
+    {
+        is_connected = false;
+        led_state_saver_init(&ledsaver_inst, &ble_ledsaver_init);
+    }
+
+        
+
+    
+
     }
     
 }
