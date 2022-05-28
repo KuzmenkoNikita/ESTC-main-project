@@ -49,6 +49,7 @@ static uint16_t conn_handle = BLE_CONN_HANDLE_INVALID;
 /* ********************************************************************************** */
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
+    {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
     {ESTC_UUID_SERVICE, BLE_UUID_TYPE_BLE}
 };
 /* ********************************************************************************** */
@@ -211,8 +212,6 @@ void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
     ble_communicator_t* p_communicator = (ble_communicator_t*)p_ctx;
 
     ble_led_components color_component;
-
-    NRF_LOG_INFO("Value %u", write_val);
 
     switch(char_uuid)
     {

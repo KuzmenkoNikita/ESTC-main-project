@@ -84,9 +84,6 @@ void ble_set_led_color_component(ble_led_components color_component, uint16_t va
     SRGBCoordinates sRGB;
     HSVtoRGB_calc(p_hsv_color, &sRGB);
 
-    NRF_LOG_INFO("H %u, S: %u, V: %u", p_hsv_color->H, p_hsv_color->S, p_hsv_color->V);
-    NRF_LOG_INFO("R %u, G: %u, B: %u", sRGB.R, sRGB.G, sRGB.B);
-
     pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
 }
 

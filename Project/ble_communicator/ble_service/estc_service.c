@@ -73,8 +73,6 @@ static void on_write(ble_estc_service_t *service, ble_evt_t const * p_ble_evt)
     uint32_t data = p_evt_write->data[0] | (p_evt_write->data[1] << 8);
     uint16_t uuid = 0;
 
-    NRF_LOG_INFO("Data0 %x, Data1: %x, Data total: %x", p_evt_write->data[0], p_evt_write->data[1], data);
-
     switch(p_evt_write->uuid.uuid)
     {
         case ESTC_UUID_CHAR_LED_H:
