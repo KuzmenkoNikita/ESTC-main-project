@@ -73,6 +73,8 @@ static void on_write(ble_estc_service_t *service, ble_evt_t const * p_ble_evt)
     uint32_t data = p_evt_write->data[0] | (p_evt_write->data[1] << 8);
     uint16_t uuid = 0;
 
+    NRF_LOG_INFO("Data0 %x, Data1: %x, Data total: %x", p_evt_write->data[0], p_evt_write->data[1], data);
+
     switch(p_evt_write->uuid.uuid)
     {
         case ESTC_UUID_CHAR_LED_H:
@@ -203,9 +205,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     led_ctrl_char_params m_led_char_params[LED_CHARACTERISTICS_CNT] = 
     {
-        {service, ESTC_UUID_CHAR_LED_V, &service->char_led_v_handle, "Led hue", false, false, true, false},
-        {service, ESTC_UUID_CHAR_LED_S, &service->char_led_s_handle, "Led sat", false, false, false, true},
-        {service, ESTC_UUID_CHAR_LED_H, &service->char_led_h_handle, "Led val", true, true, false, false},
+        {service, ESTC_UUID_CHAR_LED_V, &service->char_led_v_handle, "Led val", true, true, true, false},
+        {service, ESTC_UUID_CHAR_LED_S, &service->char_led_s_handle, "Led sat", true, true, true, false},
+        {service, ESTC_UUID_CHAR_LED_H, &service->char_led_h_handle, "Led hue", true, true, true, false},
     };
 
     ret_code_t err_code = NRF_SUCCESS;

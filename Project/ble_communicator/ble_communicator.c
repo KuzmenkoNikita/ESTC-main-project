@@ -13,7 +13,7 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 /* ******************************************************** */
-#define DEVICE_NAME                     "ESTC"                                  /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "LED CTRL"                              /**< Name of device. Will be included in the advertising data. */
 #define APP_BLE_OBSERVER_PRIO           3                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_BLE_CONN_CFG_TAG            1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 /* ******************************************************** */
@@ -212,6 +212,8 @@ void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
 
     ble_led_components color_component;
 
+    NRF_LOG_INFO("Value %u", write_val);
+
     switch(char_uuid)
     {
         case ESTC_UUID_CHAR_LED_H:
@@ -250,8 +252,6 @@ void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
     {
         p_communicator->led_set_color_cb(color_component, write_val, p_communicator->p_ctx);
     }
-
-    NRF_LOG_INFO("Write: UUID: %u, VAL: %u", char_uuid, write_val);
 }
 
 /** @brief Function for initializing services that will be used by the application.
