@@ -99,6 +99,7 @@ int8_t LedStateSaver_init(SLedStateSaverInst* psInst, const SLedStateSaverParam*
         psInst->unReadAddr = FlashAddr;
         psInst->unWriteAddr = FlashAddr + sizeof(uint32_t);
     }
+    
     return 0;
 }
 /* **************************************************************************************** */

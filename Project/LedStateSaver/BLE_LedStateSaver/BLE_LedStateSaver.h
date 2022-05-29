@@ -33,7 +33,7 @@ typedef struct
     uint32_t                            read_addr;
     uint32_t                            active_page;
     ble_ledstatesaver_state_changed     state_changed_callback;
-    void*                               p_data;     /* User-defined parameter passed to state changed callback */
+    void*                               p_data;     
 }ble_ledsaver_inst;
 
 /** @brief module init params. This module requires 2 flash pages*/
@@ -48,10 +48,28 @@ typedef struct
 /**
  * @brief init module
  *
- * @param psInst    pointer to module instance struct
- * @param psParam   pointer to init param struct
- * @return 0 if OK, -1 if Error
+ * @param p_init_params     pointer to module instance struct
+ * @param p_saver_inst      pointer to init param struct
+ * @return true if OK, false if Error
  */
 bool led_state_saver_init(ble_ledsaver_inst* p_saver_inst, const ble_ledsaver_init* p_init_params);
+
+/**
+ * @brief Get led state from flash
+ *
+ * @param p_saver_inst      pointer to module instance struct
+ * @param p_hsv_led         pointer to led state
+ * @return true if OK, false if Error
+ */
+bool led_state_saver_get_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates* p_hsv_led);
+
+/**
+ * @brief save led state to flash
+ *
+ * @param p_saver_inst      pointer to module instance struct
+ * @param p_hsv_led         pointer to led state
+ * @return true if OK, false if Error
+ */
+bool led_state_saver_save_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates* p_hsv_led);
 
 #endif

@@ -100,6 +100,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(PROJ_DIR)/LedStateSaver/BLE_LedStateSaver/BLE_LedStateSaver.c \
+  $(PROJ_DIR)/LedStateSaver/CRC8/CRC8.c \
   $(PROJ_DIR)/main.c \
 
 
@@ -240,6 +241,8 @@ INC_FOLDERS += \
   $(PROJ_DIR)/pca10059_led/pca100059_rgb_led \
   $(PROJ_DIR)/HSV_to_RGB \
   $(PROJ_DIR)/LedStateSaver/BLE_LedStateSaver \
+  $(PROJ_DIR)/LedStateSaver/CRC8  \
+
 
 # Libraries common to all targets
 LIB_FILES += \

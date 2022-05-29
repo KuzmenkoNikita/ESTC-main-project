@@ -95,6 +95,12 @@ void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
         case BLE_LEDSAVER_INIT_SUCCESSFUL:
         {
             NRF_LOG_INFO("BLE_LEDSAVER_INIT_SUCCESSFUL");
+            ble_ledsaver_inst* p_ledsaver_inst = (ble_ledsaver_inst*)p_data;
+            ;
+            SHSVCoordinates led_hsv;
+
+            led_state_saver_get_state(p_ledsaver_inst, &led_hsv);
+
             break;
         }
 
@@ -139,7 +145,7 @@ int main(void)
 
     ble_ledsaver_init.first_page    = 0x000DE000;
     ble_ledsaver_init.second_page   = 0x000DD000;
-    ble_ledsaver_init.p_data        = 0;
+    ble_ledsaver_init.p_data        = (void*)&ledsaver_inst;
     ble_ledsaver_init.state_changed_callback = ble_ledsaver_state_changed;
 
     
