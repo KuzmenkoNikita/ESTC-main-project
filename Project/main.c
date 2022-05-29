@@ -88,6 +88,35 @@ is_connected = true;
     pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
 }
 
+void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
+{
+    switch(state)
+    {
+        case BLE_LEDSAVER_INIT_SUCCESSFUL:
+        {
+            NRF_LOG_INFO("BLE_LEDSAVER_INIT_SUCCESSFUL");
+            break;
+        }
+
+        case BLE_LEDSAVER_INIT_ERROR:
+        {
+            NRF_LOG_INFO("BLE_LEDSAVER_INIT_ERROR");
+            break;
+        }
+
+        case BLE_LEDSAVER_WRITE_SUCCESSFUL:
+        {
+            NRF_LOG_INFO("BLE_LEDSAVER_WRITE_SUCCESSFUL");
+            break;
+        }
+
+        default:
+        {
+            NRF_LOG_INFO("ble_ledsaver_state_changed: unexpected state");
+            break;
+        }
+    }
+}
 
 int main(void)
 {
@@ -108,9 +137,10 @@ int main(void)
     ble_ledsaver_inst ledsaver_inst;
     ble_ledsaver_init ble_ledsaver_init;
 
-    ble_ledsaver_init.first_page = 0x000DE000;
-    ble_ledsaver_init.second_page = 0x000DD000;
-
+    ble_ledsaver_init.first_page    = 0x000DE000;
+    ble_ledsaver_init.second_page   = 0x000DD000;
+    ble_ledsaver_init.p_data        = 0;
+    ble_ledsaver_init.state_changed_callback = ble_ledsaver_state_changed;
 
     
 
