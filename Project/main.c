@@ -28,9 +28,10 @@
 #include "HSV_to_RGB_Calc.h"
 
 #include "BLE_LedStateSaver.h"
-
+static ble_ledsaver_inst ledsaver_inst;
 static ble_communicator_t ble_communicator;
-            static bool is_connected = false;               
+            static bool is_connected = false;    
+            static bool flash_inited = false;           
 /**@brief Function for initializing the nrf log module.
  */
 static void log_init(void)
@@ -95,11 +96,7 @@ void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
         case BLE_LEDSAVER_INIT_SUCCESSFUL:
         {
             NRF_LOG_INFO("BLE_LEDSAVER_INIT_SUCCESSFUL");
-            ble_ledsaver_inst* p_ledsaver_inst = (ble_ledsaver_inst*)p_data;
-            ;
-            SHSVCoordinates led_hsv;
-
-            led_state_saver_get_state(p_ledsaver_inst, &led_hsv);
+            flash_inited = true;
 
             break;
         }
@@ -113,6 +110,7 @@ void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
         case BLE_LEDSAVER_WRITE_SUCCESSFUL:
         {
             NRF_LOG_INFO("BLE_LEDSAVER_WRITE_SUCCESSFUL");
+            
             break;
         }
 
@@ -140,7 +138,7 @@ int main(void)
 
     ble_communicaror_init(&ble_communicator, &ble_comm_init);
 
-    ble_ledsaver_inst ledsaver_inst;
+    
     ble_ledsaver_init ble_ledsaver_init;
 
     ble_ledsaver_init.first_page    = 0x000DE000;
@@ -159,6 +157,24 @@ int main(void)
     {
         is_connected = false;
         led_state_saver_init(&ledsaver_inst, &ble_ledsaver_init);
+    }
+
+    if(flash_inited)
+    {
+        flash_inited = false;
+        led_state_saver_get_state(&ledsaver_inst, &sLedCoords);
+
+        sLedCoords.H = 60;
+        sLedCoords.S = 75;
+        sLedCoords.V = 85;
+
+        SRGBCoordinates sRGB;
+        HSVtoRGB_calc(&sLedCoords, &sRGB);
+
+        pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+
+        led_state_saver_save_state(&ledsaver_inst, &sLedCoords);
+
     }
 
         

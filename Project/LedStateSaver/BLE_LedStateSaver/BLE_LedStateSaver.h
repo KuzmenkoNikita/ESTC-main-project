@@ -13,6 +13,7 @@ typedef enum
     BLE_LEDSAVER_INIT_SUCCESSFUL,
     BLE_LEDSAVER_INIT_ERROR,
     BLE_LEDSAVER_WRITE_SUCCESSFUL,
+    BLE_LEDSAVER_WRITE_ERROR,
 }ble_ledsaver_state;
 
 /**
@@ -28,7 +29,7 @@ typedef struct
 {
     uint32_t                            pages_addrs[BLE_LEDSTATESAVER_COUNTOF_PAGES];
     uint32_t                            last_op_state[BLE_LEDSTATESAVER_COUNTOF_PAGES];
-    uint32_t                            page_size;
+    uint32_t                            data_to_write;
     uint32_t                            write_addr;
     uint32_t                            read_addr;
     uint32_t                            active_page;
