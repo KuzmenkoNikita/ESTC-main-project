@@ -26,12 +26,13 @@
 #include "ble_communicator.h"
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
-
 #include "BLE_LedStateSaver.h"
+
 static ble_ledsaver_inst ledsaver_inst;
 static ble_communicator_t ble_communicator;
-            static bool is_connected = false;    
-            static bool flash_inited = false;           
+static ble_ledsaver_state   ledsaver_init_state = BLE_LEDSAVER_STATE_UNDEFINED;
+static ble_ledsaver_state   ledsaver_save_state = BLE_LEDSAVER_WRITE_SUCCESSFUL;
+static SHSVCoordinates hsv_led_coords = {0};
 /**@brief Function for initializing the nrf log module.
  */
 static void log_init(void)
@@ -82,13 +83,27 @@ void ble_set_led_color_component(ble_led_components color_component, uint16_t va
 
         default: return;
     }
-is_connected = true;
+
     SRGBCoordinates sRGB;
     HSVtoRGB_calc(p_hsv_color, &sRGB);
 
     pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
-}
 
+    if(ledsaver_save_state != BLE_LEDSAVER_STATE_UNDEFINED)
+    {
+        ledsaver_save_state = BLE_LEDSAVER_STATE_UNDEFINED;
+
+        if(!led_state_saver_save_state(&ledsaver_inst, p_hsv_color))
+        {
+            NRF_LOG_INFO("ble_set_led_color_component: led_state_saver_save_state error");
+        }
+    }
+    else
+    {
+        NRF_LOG_INFO("ble_set_led_color_component: can't save led state - flash is not ready");
+    }
+}
+/* ********************************************************************** */
 void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
 {
     switch(state)
@@ -96,7 +111,7 @@ void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
         case BLE_LEDSAVER_INIT_SUCCESSFUL:
         {
             NRF_LOG_INFO("BLE_LEDSAVER_INIT_SUCCESSFUL");
-            flash_inited = true;
+            ledsaver_init_state = BLE_LEDSAVER_INIT_SUCCESSFUL;
 
             break;
         }
@@ -104,13 +119,22 @@ void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
         case BLE_LEDSAVER_INIT_ERROR:
         {
             NRF_LOG_INFO("BLE_LEDSAVER_INIT_ERROR");
+            ledsaver_init_state = BLE_LEDSAVER_INIT_ERROR;
             break;
         }
 
         case BLE_LEDSAVER_WRITE_SUCCESSFUL:
         {
+            ledsaver_save_state = BLE_LEDSAVER_WRITE_SUCCESSFUL;
             NRF_LOG_INFO("BLE_LEDSAVER_WRITE_SUCCESSFUL");
             
+            break;
+        }
+
+        case BLE_LEDSAVER_WRITE_ERROR:
+        {
+            ledsaver_save_state = BLE_LEDSAVER_WRITE_ERROR;
+            NRF_LOG_INFO("BLE_LEDSAVER_WRITE_ERROR");
             break;
         }
 
@@ -121,22 +145,23 @@ void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
         }
     }
 }
-
+/* ********************************************************************** */
 int main(void)
 {
     log_init();
     timers_init();
 
-    SHSVCoordinates sLedCoords = {0};
-
     pca10059_RGBLed_init();
 
     ble_comm_init_t ble_comm_init;
 
-    ble_comm_init.p_ctx             = (void*)&sLedCoords;
+    ble_comm_init.p_ctx             = (void*)&hsv_led_coords;
     ble_comm_init.led_set_color_cb  = ble_set_led_color_component;
 
-    ble_communicaror_init(&ble_communicator, &ble_comm_init);
+    if(!ble_communicaror_init(&ble_communicator, &ble_comm_init))
+    {
+        NRF_LOG_INFO("ble_communicaror_init failed!");
+    }
 
     
     ble_ledsaver_init ble_ledsaver_init;
@@ -146,41 +171,32 @@ int main(void)
     ble_ledsaver_init.p_data        = (void*)&ledsaver_inst;
     ble_ledsaver_init.state_changed_callback = ble_ledsaver_state_changed;
 
+    if(!led_state_saver_init(&ledsaver_inst, &ble_ledsaver_init))
+    {
+        NRF_LOG_INFO("led_state_saver_init failed!");
+    }
+
+    while(ledsaver_init_state == BLE_LEDSAVER_STATE_UNDEFINED);
+
+    if(ledsaver_init_state != BLE_LEDSAVER_INIT_SUCCESSFUL)
+    {
+        NRF_LOG_INFO("led_state_saver_init error: no status changed");
+    }
+
+    if(!led_state_saver_get_state(&ledsaver_inst, &hsv_led_coords))
+    {
+        NRF_LOG_INFO("led_state_saver_get_state error");
+    }
+
+    SRGBCoordinates sRGB;
+    HSVtoRGB_calc(&hsv_led_coords, &sRGB);
+
+    pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
     
 
     while(1)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
-
-    if(is_connected)
-    {
-        is_connected = false;
-        led_state_saver_init(&ledsaver_inst, &ble_ledsaver_init);
     }
-
-    if(flash_inited)
-    {
-        flash_inited = false;
-        led_state_saver_get_state(&ledsaver_inst, &sLedCoords);
-
-        sLedCoords.H = 60;
-        sLedCoords.S = 75;
-        sLedCoords.V = 85;
-
-        SRGBCoordinates sRGB;
-        HSVtoRGB_calc(&sLedCoords, &sRGB);
-
-        pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
-
-        led_state_saver_save_state(&ledsaver_inst, &sLedCoords);
-
-    }
-
-        
-
-    
-
-    }
-    
 }
