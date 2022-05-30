@@ -129,6 +129,8 @@
 #define NRFX_SYSTICK_ENABLED 1
 #endif
 
+//#define SYSTICK_ENABLED 1
+
 #define PWM_ENABLED 1
 #define PWM0_ENABLED 1
 

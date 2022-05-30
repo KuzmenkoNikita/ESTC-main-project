@@ -412,33 +412,25 @@ bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components c
         return false;
 
     uint16_t char_uuid = 0;
-    ble_estc_send_type send_type;
+    ble_estc_send_type send_type = BLE_ESTC_SEND_BY_NOTIFICATION;
 
     switch(color)
     {
         case BLE_LED_COMPONENT_H:
         {
             char_uuid = ESTC_UUID_CHAR_LED_H;
-            return false; /* Don't supported yet */
+            break;
         }
 
         case BLE_LED_COMPONENT_S:
         {
             char_uuid = ESTC_UUID_CHAR_LED_S;
-
-            if(p_ctx->tx_queue_size > 0)
-                return false;
-
-            send_type = BLE_ESTC_SEND_BY_INDICATION;
-            ++p_ctx->tx_queue_size;
-
             break;
         }
 
         case BLE_LED_COMPONENT_V:
         {
             char_uuid = ESTC_UUID_CHAR_LED_V;
-            send_type = BLE_ESTC_SEND_BY_NOTIFICATION;
             break;
         }
 

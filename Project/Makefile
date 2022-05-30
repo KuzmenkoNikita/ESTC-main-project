@@ -21,6 +21,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_systick.c \
   $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_uart.c \
   $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_power.c \
   $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_clock.c \
@@ -101,6 +102,8 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(PROJ_DIR)/LedStateSaver/BLE_LedStateSaver/BLE_LedStateSaver.c \
   $(PROJ_DIR)/LedStateSaver/CRC8/CRC8.c \
+  $(PROJ_DIR)/Workmode_Indication/WMIndication.c \
+  $(PROJ_DIR)/pca10059_button/pca10059_button.c \
   $(PROJ_DIR)/main.c \
 
 
@@ -242,6 +245,8 @@ INC_FOLDERS += \
   $(PROJ_DIR)/HSV_to_RGB \
   $(PROJ_DIR)/LedStateSaver/BLE_LedStateSaver \
   $(PROJ_DIR)/LedStateSaver/CRC8  \
+  $(PROJ_DIR)/Workmode_Indication \
+  $(PROJ_DIR)/pca10059_button \
 
 
 # Libraries common to all targets
