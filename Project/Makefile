@@ -104,6 +104,8 @@ SRC_FILES += \
   $(PROJ_DIR)/LedStateSaver/CRC8/CRC8.c \
   $(PROJ_DIR)/Workmode_Indication/WMIndication.c \
   $(PROJ_DIR)/pca10059_button/pca10059_button.c \
+  $(PROJ_DIR)/usb_agent/usb_agent.c \
+  $(PROJ_DIR)/LEDState_Parser/LEDState_Parser.c \
   $(PROJ_DIR)/main.c \
 
 
@@ -247,6 +249,8 @@ INC_FOLDERS += \
   $(PROJ_DIR)/LedStateSaver/CRC8  \
   $(PROJ_DIR)/Workmode_Indication \
   $(PROJ_DIR)/pca10059_button \
+  $(PROJ_DIR)/usb_agent \
+  $(PROJ_DIR)/LEDState_Parser \
 
 
 # Libraries common to all targets

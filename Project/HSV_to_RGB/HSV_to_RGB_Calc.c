@@ -1,6 +1,8 @@
 #include "HSV_to_RGB_Calc.h"
+#include "nordic_common.h"
 
-#define HSV2RGB_COEF    255/100
+#define RGB_MAX_VAL     255
+#define HSV2RGB_COEF    RGB_MAX_VAL/100
 
 #define MAX_VAL_H   360
 #define MAX_VAL_S   100
@@ -86,7 +88,64 @@ void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB)
         default: return;
     }
 }
+/* ********************************************************************************* */
+void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV)
+{
+    uint8_t rgbMin = RGB_MAX_VAL;
+    uint8_t rgbMax = 0;
 
+    if(!psRGB || !psHSV)
+        return;
+
+    if(psRGB->R > RGB_MAX_VAL || psRGB->G > RGB_MAX_VAL || psRGB->B > RGB_MAX_VAL)
+        return;
+
+    uint8_t mParams[] = {psRGB->R, psRGB->G, psRGB->B};
+
+    for(uint8_t i = 0; i < ARRAY_SIZE(mParams); ++i)
+    {
+        if(mParams[i] > rgbMax)
+            rgbMax = mParams[i];
+    }
+
+    for(uint8_t i = 0; i < ARRAY_SIZE(mParams); ++i)
+    {
+        if(mParams[i] < rgbMin)
+            rgbMin = mParams[i];
+    }
+
+    psHSV->V = rgbMax;
+    if (psHSV->V== 0)
+    {
+        psHSV->V = (psHSV->V * 100) / 255;
+        psHSV->H = 0;
+        psHSV->S = 0;
+        return;
+    }
+
+    psHSV->S = 255 * ((long)(rgbMax - rgbMin)) / psHSV->V;
+    if (psHSV->S == 0)
+    {
+        psHSV->V = (psHSV->V * 100) / 255;
+        psHSV->S = (psHSV->S * 100) / 255;
+        psHSV->H = 0;
+        return;
+    }
+
+    if (rgbMax == psRGB->R)
+        psHSV->H = 0 + 43 * (psRGB->G - psRGB->B) / (rgbMax - rgbMin);
+    else if (rgbMax == psRGB->G)
+        psHSV->H = 85 + 43 * (psRGB->B - psRGB->R) / (rgbMax - rgbMin);
+    else
+        psHSV->H = 171 + 43 * (psRGB->R - psRGB->G) / (rgbMax - rgbMin);
+
+    psHSV->H = (psHSV->H * 360) / 255;
+    psHSV->V = (psHSV->V * 100) / 255;
+    psHSV->S = (psHSV->S * 100) / 255;
+
+    return;
+}
+/* ********************************************************************************* */
 void increment_with_rotate(SHSVCoordinates* psHSV, EHSVParams eParams)
 {
     if(!psHSV)

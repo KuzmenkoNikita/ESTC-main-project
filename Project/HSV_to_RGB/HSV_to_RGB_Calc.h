@@ -1,5 +1,5 @@
-#ifndef HSV2RGB_CALC
-#define HSV2RGB_CALC
+#ifndef HSV_TO_RGB_CALC
+#define HSV_TO_RGB_CALC
 
 #include <stdint.h>
 
@@ -30,10 +30,18 @@ typedef struct
 /**
  * @brief Transform HSV to RGB coordinates
  *
- * @param psHSV pointer to HSV coordinates
+ * @param  pointer to HSV coordinates
  * @param psRGB pointer to RGB coordinates
  */
 void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB);
+
+/**
+ * @brief Transform RGB to HSV coordinates
+ *
+ * @param psRGB pointer to HSV coordinates
+ * @param psHSV pointer to RGB coordinates
+ */
+void RGBtoHSV_calc(const SRGBCoordinates* psRGB, SHSVCoordinates* psHSV);
 
 /**
  * @brief Increment params by one and rotate if it overflows
@@ -43,4 +51,4 @@ void HSVtoRGB_calc(const SHSVCoordinates* psHSV, SRGBCoordinates* psRGB);
  */
 void increment_with_rotate(SHSVCoordinates* psHSV, EHSVParams eParams);
 
-#endif /* HSV2RGB_CALC */
+#endif /* HSV_TO_RGB_CALC */

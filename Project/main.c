@@ -4,13 +4,13 @@
 
 #include "nordic_common.h"
 #include "app_error.h"
-
+#include "LEDState_Parser.h"
 #include "app_timer.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
-
+#include "usb_agent.h"
 #include "ble_communicator.h"
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
@@ -19,6 +19,7 @@
 #include "pca10059_button.h"
 /* ******************************************************************* */
 #define WAIT_APPLY_PRESSING_MS      200
+#define MAX_CMD_BUF_SIZE            200
 /* ******************************************************************* */
 static ble_ledsaver_inst ledsaver_inst;
 static ble_communicator_t ble_communicator;
@@ -35,6 +36,11 @@ void global_time_tiomeout_handler(void * p_context);
 static void increment_hsv(SHSVCoordinates* psHSV, EWMTypes eWM);
 static void send_hsv_depending_on_wm(SHSVCoordinates* psHSV, EWMTypes eWM);
 static void save_led_hsv_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates* p_hsv_led);
+void parser_help_request_callback(void* p_data, const char** p_m_sz_info, uint32_t  array_size);
+void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data);
+void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data);
+void parser_cmd_error_callback(void* p_data);
+static void send_all_color_components(SHSVCoordinates* psHSV);
 /* ******************************************************************* */
 /**@brief Function for initializing the nrf log module.
  */
@@ -103,6 +109,30 @@ static void send_hsv_depending_on_wm(SHSVCoordinates* psHSV, EWMTypes eWM)
     if(!ble_communicator_send_color(&ble_communicator, led_color, color_value))
     {
         NRF_LOG_INFO("send_hsv_depending_on_wm: ble_communicator_send_color error!");
+    }
+}
+/* ******************************************************************* */
+static void send_all_color_components(SHSVCoordinates* psHSV)
+{
+    if(!psHSV)
+        return;
+
+    typedef struct 
+    {
+        ble_led_components color_component;
+        uint16_t           color_value;
+    }led_color_component_data;
+    
+    led_color_component_data led_color_data[3] = {{BLE_LED_COMPONENT_H, psHSV->H},
+                                                    {BLE_LED_COMPONENT_S, psHSV->S},
+                                                    {BLE_LED_COMPONENT_V, psHSV->V}};
+
+    for(uint32_t i = 0; i < 3; ++i)
+    {
+        if(!ble_communicator_send_color(&ble_communicator, led_color_data->color_component, led_color_data->color_value))
+        {
+            NRF_LOG_INFO("send_all_color_components: ble_communicator_send_color error!");
+        }
     }
 }
 /* ******************************************************************* */
@@ -284,6 +314,65 @@ void button_dblclick_handler(eBtnState eState, void* pData)
     WMIndication_SetWM(current_workmode);
 }
 /* ********************************************************************** */
+void parser_help_request_callback(void* p_data, const char** p_m_sz_info, uint32_t  array_size)
+{
+    for(uint32_t i = 0; i < array_size; ++i)
+    {
+        if(!usb_agent_send_buf(p_m_sz_info[i], strlen(p_m_sz_info[i])))
+        {
+            NRF_LOG_INFO("Error send help msg \n");
+        }
+    }
+}
+/* ********************************************************************** */
+void parser_cmd_error_callback(void* p_data)
+{
+    const char sz_msg[]="Incorrect command! Try \"help\" for info\n\r";
+
+    if(!usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    {
+        NRF_LOG_INFO("Error send set RGB msg \n");
+    } 
+}
+/* ********************************************************************** */
+void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data)
+{
+    char sz_msg[50];
+    SRGBCoordinates sRGB = {r, g, b};
+    SHSVCoordinates sHSV;
+
+    RGBtoHSV_calc(&sRGB, &sHSV);
+
+    pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
+
+    hsv_led_coords = sHSV;
+
+    save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
+    send_all_color_components(&hsv_led_coords);
+
+    sprintf(sz_msg, "Color is set to R: %u, G: %u, B: %u \n\r", r,g,b);
+
+    if(!usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    {
+        NRF_LOG_INFO("Error send set RGB msg \n");
+    }
+}
+/* ********************************************************************** */
+void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data)
+{
+    #if 0
+    char sz_msg[50];
+    SRGBCoordinates sRGB;
+
+    sprintf(sz_msg, "Color is set to H: %u, S: %u, V: %u \n\r", h,s,v);
+
+    if(!usb_agent_send_buf(sz_msg, strlen(sz_msg)))
+    {
+        NRF_LOG_INFO("Error send set RGB msg \n");
+    }
+    #endif
+}
+/* ********************************************************************** */
 int main(void)
 {
     log_init();
@@ -347,10 +436,40 @@ int main(void)
     HSVtoRGB_calc(&hsv_led_coords, &sRGB);
 
     pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
-    
+
+    SLEDStateParserInst parser_inst;
+    SLEDStateParserInfo parser_info;
+
+    parser_info.p_data          = NULL;
+    parser_info.help_request    = parser_help_request_callback;
+    parser_info.cmd_error       = parser_cmd_error_callback;
+    parser_info.set_rgb         = parser_cmd_set_rgb_callback;
+    parser_info.set_hsv         = parser_cmd_set_hsv_callback;
+
+    parser_init(&parser_inst, &parser_info);
+    usb_agent_init();
 
     while(1)
     {
+        size_t unCMDSize = 0;
+
+        if(usb_agent_process(&unCMDSize))
+        {
+            if(unCMDSize > MAX_CMD_BUF_SIZE)
+            {
+                usb_agent_reset_cmd_buf();
+            }
+            else
+            {
+                char p_cmd[unCMDSize + 1];
+                if(usb_agent_get_cmd_buf(p_cmd, unCMDSize + 1))
+                {
+                    p_cmd[unCMDSize] = '\0';
+                    parser_parse_cmd(&parser_inst, p_cmd);
+                }
+            }
+        }
+
         main_button_state = pca10059_GetButtonState();
 
         LOG_BACKEND_USB_PROCESS();
