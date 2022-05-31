@@ -364,9 +364,9 @@ static bool advertising_start(void)
 /* ***************************************************************************************************** */
 bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params)
 {
-    p_ctx->led_set_color_cb = p_init_params->led_set_color_cb;
-    p_ctx->p_ctx            = p_init_params->p_ctx;
-    p_ctx->tx_queue_size    = 0;
+    p_ctx->led_set_color_cb     = p_init_params->led_set_color_cb;
+    p_ctx->p_ctx                = p_init_params->p_ctx;
+    p_ctx->send_ack_callback    = p_init_params->send_ack_callback;
 
     if(!ble_stack_init(p_ctx))
         return false;
@@ -394,25 +394,32 @@ bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_pa
 /* ***************************************************************************************************** */
 void estc_service_tx_done_callback(void* p_ctx)
 {
+    NRF_LOG_INFO("estc_service_tx_done_callback");
     if(!p_ctx)
+    {
         return;
+    }
 
     ble_communicator_t* p_module = (ble_communicator_t*)p_ctx;
-    
-    if(p_module->tx_queue_size > 0)
+    if(!p_module)
     {
-        --p_module->tx_queue_size;
+        return;
+    }
+
+    if(p_module->send_ack_callback != NULL)
+    {
+        p_module->send_ack_callback(p_module->p_ctx);
     }
 }
 
 /* ***************************************************************************************************** */
-bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value)
+bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value, bool is_send_acked)
 {
     if(!p_ctx)
         return false;
 
     uint16_t char_uuid = 0;
-    ble_estc_send_type send_type = BLE_ESTC_SEND_BY_NOTIFICATION;
+    ble_estc_send_type send_type = is_send_acked ? BLE_ESTC_SEND_BY_INDICATION : BLE_ESTC_SEND_BY_NOTIFICATION;
 
     switch(color)
     {
@@ -434,7 +441,11 @@ bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components c
             break;
         }
 
-        default: return false;
+        default:
+        {
+            NRF_LOG_INFO("ble_communicator_send_color: unexpected color");
+            return false;
+        } 
     }
 
     return estc_service_send_char_value(conn_handle, &m_estc_service, char_uuid, value, send_type);

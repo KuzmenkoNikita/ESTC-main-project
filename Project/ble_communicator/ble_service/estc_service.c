@@ -203,9 +203,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     led_ctrl_char_params m_led_char_params[LED_CHARACTERISTICS_CNT] = 
     {
-        {service, ESTC_UUID_CHAR_LED_V, &service->char_led_v_handle, "Led val", true, true, true, false},
-        {service, ESTC_UUID_CHAR_LED_S, &service->char_led_s_handle, "Led sat", true, true, true, false},
-        {service, ESTC_UUID_CHAR_LED_H, &service->char_led_h_handle, "Led hue", true, true, true, false},
+        {service, ESTC_UUID_CHAR_LED_V, &service->char_led_v_handle, "Led val", true, true, true, true},
+        {service, ESTC_UUID_CHAR_LED_S, &service->char_led_s_handle, "Led sat", true, true, true, true},
+        {service, ESTC_UUID_CHAR_LED_H, &service->char_led_h_handle, "Led hue", true, true, true, true},
     };
 
     ret_code_t err_code = NRF_SUCCESS;
@@ -242,7 +242,11 @@ bool estc_service_send_char_value(uint16_t conn_handle, ble_estc_service_t *serv
             break;
         }
 
-        default: return false;
+        default:
+        {
+            NRF_LOG_INFO("estc_service_send_char_value: unexpected send_method");
+            return false;
+        } 
     }
 
     switch(char_uuid)
@@ -265,14 +269,22 @@ bool estc_service_send_char_value(uint16_t conn_handle, ble_estc_service_t *serv
             break;
         } 
 
-        default: return false;
+        default: 
+        {
+            NRF_LOG_INFO("estc_service_send_char_value: unexpected char_uuid");
+            return false;
+        }
     }
 
     params.p_data = (const uint8_t*)&value;
     params.p_len  = &len;
 
-    if(NRF_SUCCESS != sd_ble_gatts_hvx(conn_handle, &params))
+    uint32_t err = sd_ble_gatts_hvx(conn_handle, &params);
+    if(NRF_SUCCESS != err)
+    {
+        NRF_LOG_INFO("estc_service_send_char_value: sd_ble_gatts_hvx error code %u", err);
         return false;
+    }
 
     return true;
 }
