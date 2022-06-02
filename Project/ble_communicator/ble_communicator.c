@@ -40,12 +40,14 @@ static bool conn_params_init(void);
 static void conn_params_error_handler(uint32_t nrf_error);
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt);
 static bool advertising_start(void);
-void estc_service_tx_done_callback(void* p_ctx);
 /* ********************************************************************************** */
 BLE_ESTC_SERVICE_DEF(m_estc_service);
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
 static uint16_t conn_handle = BLE_CONN_HANDLE_INVALID;
+static ble_client_connected        m_client_connected_cb = NULL;
+static ble_client_disconnected     m_client_disconnected_cb = NULL;
+static void* m_module_ctx   = NULL;
 /* ********************************************************************************** */
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
@@ -68,12 +70,24 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         {
             NRF_LOG_INFO("Disconnected.");
             conn_handle = BLE_CONN_HANDLE_INVALID;
+
+            if(m_client_disconnected_cb != NULL)
+            {
+                m_client_disconnected_cb(m_module_ctx);
+            }
+
             break;
         }
 
         case BLE_GAP_EVT_CONNECTED:
         {
             conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+
+            if(m_client_connected_cb != NULL)
+            {
+                m_client_connected_cb(m_module_ctx);
+            }
+
             NRF_LOG_INFO("Connected.");
 
             break;
@@ -124,17 +138,29 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 static bool ble_stack_init(ble_communicator_t* p_ctx)
 {
     if(!p_ctx)
+    {
+        NRF_LOG_INFO("ble_stack_init: p_ctx is NULL");
         return false;
+    }
 
     if(NRF_SUCCESS != nrf_sdh_enable_request())
+    {
+        NRF_LOG_INFO("ble_stack_init: nrf_sdh_enable_request failed");
         return false;
+    }
 
     uint32_t ram_start = 0;
     if(NRF_SUCCESS != nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start))
+    {
+        NRF_LOG_INFO("ble_stack_init: nrf_sdh_ble_default_cfg_set failed");
         return false;
+    }
 
     if(NRF_SUCCESS != nrf_sdh_ble_enable(&ram_start))
+    {
+        NRF_LOG_INFO("ble_stack_init: nrf_sdh_ble_enable failed");
         return false;
+    }
 
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 
@@ -205,51 +231,18 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
             break;
     }
 }
-
-void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
+/* ********************************************************************************* */
+void estc_service_write_cb (uint8_t R, uint8_t G, uint8_t B, void* p_ctx)
 {
-    
     ble_communicator_t* p_communicator = (ble_communicator_t*)p_ctx;
-
-    ble_led_components color_component;
-
-    switch(char_uuid)
+    if(!p_communicator)
     {
-        case ESTC_UUID_CHAR_LED_H:
-        {
-            color_component = BLE_LED_COMPONENT_H;
-
-            if(write_val > 360)
-                return;
-
-            break;
-        }
-        case ESTC_UUID_CHAR_LED_S:
-        {
-            color_component = BLE_LED_COMPONENT_S;
-
-            if(write_val > 255)
-                return;
-
-            break;
-        }
-
-        case ESTC_UUID_CHAR_LED_V:
-        {
-            color_component = BLE_LED_COMPONENT_V;
-
-            if(write_val > 255)
-                return;
-
-            break;
-        }
-
-        default: return;
+        return;
     }
 
     if(NULL != p_communicator->led_set_color_cb)
     {
-        p_communicator->led_set_color_cb(color_component, write_val, p_communicator->p_ctx);
+        p_communicator->led_set_color_cb(R, G, B, p_communicator->p_ctx);
     }
 }
 
@@ -258,11 +251,13 @@ void estc_service_write_cb (uint16_t char_uuid, uint32_t write_val, void* p_ctx)
 static bool services_init(ble_communicator_t* p_ctx)
 {
     if(!p_ctx)
+    {
+        NRF_LOG_INFO("services_init p_ctx is NULL");
         return false;
+    }
 
     ble_estc_service_info estc_service_info;
     estc_service_info.fn_char_write_callback = estc_service_write_cb;
-    estc_service_info.fn_tx_done_callback   = estc_service_tx_done_callback;
     estc_service_info.p_ctx = (void*)p_ctx;
 
     return estc_ble_service_init(&m_estc_service, &estc_service_info);
@@ -364,89 +359,64 @@ static bool advertising_start(void)
 /* ***************************************************************************************************** */
 bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params)
 {
-    p_ctx->led_set_color_cb     = p_init_params->led_set_color_cb;
-    p_ctx->p_ctx                = p_init_params->p_ctx;
-    p_ctx->send_ack_callback    = p_init_params->send_ack_callback;
+    p_ctx->led_set_color_cb         = p_init_params->led_set_color_cb;
+    p_ctx->p_ctx                    = p_init_params->p_ctx;
+
+    m_client_connected_cb           = p_init_params->client_connected_cb;
+    m_client_disconnected_cb        = p_init_params->client_disconnected_cb;
+    m_module_ctx = p_ctx->p_ctx;
 
     if(!ble_stack_init(p_ctx))
+    {
+        NRF_LOG_INFO("ble_communicaror_init ble_stack_init failed!");
         return false;
+    }
 
     if(!gap_params_init())
+    {
+        NRF_LOG_INFO("ble_communicaror_init gap_params_init failed!");
         return false;
+    }
 
     if(!gatt_init())
+    {
+        NRF_LOG_INFO("ble_communicaror_init gatt_init failed!");
         return false;
+    }
 
     if(!advertising_init())
+    {
+        NRF_LOG_INFO("ble_communicaror_init advertising_init failed!");
         return false;
+    }
 
     if(!services_init(p_ctx))
+    {
+        NRF_LOG_INFO("ble_communicaror_init services_init failed!");
         return false;
+    }
 
     if(!conn_params_init())
+    {
+        NRF_LOG_INFO("ble_communicaror_init conn_params_init failed!");
         return false;
+    }
 
     if(!advertising_start())
+    {
+        NRF_LOG_INFO("ble_communicaror_init conn_params_init failed!");
         return false;
+    }
 
     return true;
 } 
-/* ***************************************************************************************************** */
-void estc_service_tx_done_callback(void* p_ctx)
-{
-    NRF_LOG_INFO("estc_service_tx_done_callback");
-    if(!p_ctx)
-    {
-        return;
-    }
-
-    ble_communicator_t* p_module = (ble_communicator_t*)p_ctx;
-    if(!p_module)
-    {
-        return;
-    }
-
-    if(p_module->send_ack_callback != NULL)
-    {
-        p_module->send_ack_callback(p_module->p_ctx);
-    }
-}
 
 /* ***************************************************************************************************** */
-bool ble_communicator_send_color(ble_communicator_t* p_ctx, ble_led_components color, uint16_t value, bool is_send_acked)
+bool ble_communicator_send_color(ble_communicator_t* p_ctx, uint8_t R, uint8_t G, uint8_t B)
 {
     if(!p_ctx)
         return false;
 
-    uint16_t char_uuid = 0;
-    ble_estc_send_type send_type = is_send_acked ? BLE_ESTC_SEND_BY_INDICATION : BLE_ESTC_SEND_BY_NOTIFICATION;
 
-    switch(color)
-    {
-        case BLE_LED_COMPONENT_H:
-        {
-            char_uuid = ESTC_UUID_CHAR_LED_H;
-            break;
-        }
-
-        case BLE_LED_COMPONENT_S:
-        {
-            char_uuid = ESTC_UUID_CHAR_LED_S;
-            break;
-        }
-
-        case BLE_LED_COMPONENT_V:
-        {
-            char_uuid = ESTC_UUID_CHAR_LED_V;
-            break;
-        }
-
-        default:
-        {
-            NRF_LOG_INFO("ble_communicator_send_color: unexpected color");
-            return false;
-        } 
-    }
-
-    return estc_service_send_char_value(conn_handle, &m_estc_service, char_uuid, value, send_type);
+    return estc_service_led_color_change(conn_handle, &m_estc_service, R, G, B);
 }

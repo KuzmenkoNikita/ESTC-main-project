@@ -17,7 +17,6 @@
 #include "BLE_LedStateSaver.h"
 #include "WMIndication.h"
 #include "pca10059_button.h"
-#include "nrf_ringbuf.h"
 /* ******************************************************************* */
 #define WAIT_APPLY_PRESSING_MS      200
 #define MAX_CMD_BUF_SIZE            200
@@ -33,8 +32,6 @@ static SHSVCoordinates hsv_led_coords = {0};
 static EWMTypes current_workmode = EWM_NO_INPUT;
 static uint32_t global_time = 0;
 static eBtnState main_button_state = BTN_UNDEFINED;
-static uint32_t bytes_in_ringbuf = 0;
-static bool is_acksend_complete = true;
 /* ******************************************************************* */
 typedef struct 
 {
@@ -44,18 +41,14 @@ typedef struct
 /* ******************************************************************* */
 
 APP_TIMER_DEF(global_time_timer);
-NRF_RINGBUF_DEF(m_ringbuf, sizeof(ack_send_data)*32);
 /* ******************************************************************* */
 void global_time_tiomeout_handler(void * p_context);
 static void increment_hsv(SHSVCoordinates* psHSV, EWMTypes eWM);
-static void send_hsv_depending_on_wm(SHSVCoordinates* psHSV, EWMTypes eWM);
 static void save_led_hsv_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates* p_hsv_led);
 void parser_help_request_callback(void* p_data, const char** p_m_sz_info, uint32_t  array_size);
 void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data);
 void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data);
 void parser_cmd_error_callback(void* p_data);
-static void send_all_color_components(SHSVCoordinates* psHSV);
-void ble_ack_send_done_callback(void* p_ctx);
 /* ******************************************************************* */
 /**@brief Function for initializing the nrf log module.
  */
@@ -85,71 +78,6 @@ static void save_led_hsv_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates*
     {
         NRF_LOG_INFO("ble_set_led_color_component: can't save led state - flash is not ready");
     }   
-}
-/* ******************************************************************* */
-static void send_hsv_depending_on_wm(SHSVCoordinates* psHSV, EWMTypes eWM)
-{
-    if(!psHSV)
-        return;
-
-    uint16_t color_value = 0;
-    ble_led_components led_color;
-
-    switch(eWM)
-    {
-        case EWM_TUNING_H:
-        {
-            led_color = BLE_LED_COMPONENT_H;
-            color_value = psHSV->H;
-            break;
-        }
-
-        case EWM_TUNING_S:
-        {
-            led_color = BLE_LED_COMPONENT_S;
-            color_value = psHSV->S;
-            break;
-        }
-
-        case EWM_TUNING_V:
-        {
-            led_color = BLE_LED_COMPONENT_V;
-            color_value = psHSV->V;
-            break;
-        }
-
-        default: return;
-    }
-
-    if(!ble_communicator_send_color(&ble_communicator, led_color, color_value, false))
-    {
-        NRF_LOG_INFO("send_hsv_depending_on_wm: ble_communicator_send_color error!");
-    }
-}
-/* ******************************************************************* */
-static void send_all_color_components(SHSVCoordinates* psHSV)
-{
-    if(!psHSV)
-        return;
-
-    ack_send_data ack_send_info[3] = {{psHSV->H, SEND_H_CODE}, 
-                                    {psHSV->S, SEND_S_CODE},
-                                    {psHSV->V, SEND_V_CODE}};
-
-    for(uint32_t i = 0; i < 3; ++i)
-    {
-
-        size_t allocated_size = sizeof(ack_send_data);
-
-        if(NRF_SUCCESS != nrf_ringbuf_cpy_put(&m_ringbuf, (uint8_t*)&ack_send_info[i], &allocated_size))
-        {
-            NRF_LOG_INFO("send_all_color_components: nrf_ringbuf_cpy_put error!");
-        }
-        else
-        {
-            bytes_in_ringbuf+= allocated_size;
-        }
-    }                                
 }
 /* ******************************************************************* */
 static void increment_hsv(SHSVCoordinates* psHSV, EWMTypes eWM)
@@ -204,7 +132,10 @@ void global_time_tiomeout_handler(void * p_context)
             HSVtoRGB_calc(&hsv_led_coords, &sRGB);
             pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
 
-            send_hsv_depending_on_wm(&hsv_led_coords, current_workmode);
+            if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
+            {
+                NRF_LOG_INFO("global_time_tiomeout_handler: ble_communicator_send_color error ");
+            }
 
             NRF_LOG_INFO("Setting H %u , S %u , V %u \n", hsv_led_coords.H, hsv_led_coords.S, hsv_led_coords.V);
         }
@@ -213,7 +144,6 @@ void global_time_tiomeout_handler(void * p_context)
     {
         return;
     }
-
 }
 /** @brief Function for the Timer initialization.
  *
@@ -235,39 +165,25 @@ static void timers_init(void)
 /** @brief Callback fuction for changing LED color
  *
  */
-void ble_set_led_color_component(ble_led_components color_component, uint16_t value, void* p_ctx)
+void ble_set_led_color_component(uint8_t R, uint8_t G, uint8_t B, void* p_ctx)
 {
-    SHSVCoordinates* p_hsv_color = (SHSVCoordinates*)p_ctx;
+    SRGBCoordinates sRGB = {R, G, B};
+    SHSVCoordinates sHSV;
 
-    switch(color_component)
-    {
-        case BLE_LED_COMPONENT_H:
-        {
-            p_hsv_color->H = value;
-            break;
-        }
+    RGBtoHSV_calc(&sRGB, &sHSV);
 
-        case BLE_LED_COMPONENT_S:
-        {
-            p_hsv_color->S = value;
-            break;
-        }
-
-        case BLE_LED_COMPONENT_V:
-        {
-            p_hsv_color->V = value;
-            break;
-        }
-
-        default: return;
-    }
-
-    SRGBCoordinates sRGB;
-    HSVtoRGB_calc(p_hsv_color, &sRGB);
-
+    hsv_led_coords = sHSV;
+   
     pca10059_RGBLed_Set(sRGB.R, sRGB.G, sRGB.B);
 
-    save_led_hsv_state(&ledsaver_inst, p_hsv_color);
+    NRF_LOG_INFO("BLE led set: R: %u, G: %u, B: %u", sRGB.R, sRGB.G, sRGB.B);
+
+    save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
+
+    if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
+    {
+        NRF_LOG_INFO("ble_set_led_color_component: ble_communicator_send_color error ");
+    }
 }
 /* ********************************************************************** */
 void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
@@ -364,7 +280,11 @@ void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data)
     hsv_led_coords = sHSV;
 
     save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
-    send_all_color_components(&hsv_led_coords);
+    
+    if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
+    {
+        NRF_LOG_INFO("parser_cmd_set_rgb_callback: ble_communicator_send_color error ");
+    }
 
     sprintf(sz_msg, "Color is set to R: %u, G: %u, B: %u \n\r", r,g,b);
 
@@ -388,7 +308,11 @@ void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data)
     hsv_led_coords = sHSV;
 
     save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
-    send_all_color_components(&hsv_led_coords);
+    
+    if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
+    {
+        NRF_LOG_INFO("parser_cmd_set_rgb_callback: ble_communicator_send_color error ");
+    }
 
     sprintf(sz_msg, "Color is set to H: %u, S: %u, V: %u \n\r", h,s,v);
 
@@ -399,12 +323,25 @@ void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data)
     
 }
 /* ********************************************************************** */
-void ble_ack_send_done_callback(void* p_ctx)
-{
-    is_acksend_complete = true;
-    NRF_LOG_INFO("ble_ack_send_done_callback ");
-}
-/* ********************************************************************** */
+ void ble_client_connected_callback(void* p_ctx)
+ {
+    SRGBCoordinates sRGB;
+    RGBtoHSV_calc(&sRGB, &hsv_led_coords);
+
+    if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
+    {
+        NRF_LOG_INFO("ble_client_connected_callback: ble_communicator_send_color error ");
+    }
+
+    NRF_LOG_INFO("ble_client_connected_callback");
+ }
+
+ /* ********************************************************************** */
+ void ble_client_disconnected_callback(void* p_ctx)
+ {
+     NRF_LOG_INFO("ble_client_disconnected_callback");
+ }
+ /* ********************************************************************** */
 int main(void)
 {
     log_init();
@@ -420,11 +357,11 @@ int main(void)
     }
 
     WMIndication_SetWM(current_workmode);
-    nrf_ringbuf_init(&m_ringbuf);
 
-    ble_comm_init.p_ctx             = (void*)&hsv_led_coords;
-    ble_comm_init.led_set_color_cb  = ble_set_led_color_component;
-    ble_comm_init.send_ack_callback = ble_ack_send_done_callback;
+    ble_comm_init.p_ctx                     = (void*)&hsv_led_coords;
+    ble_comm_init.led_set_color_cb          = ble_set_led_color_component;
+    ble_comm_init.client_connected_cb       = ble_client_connected_callback;
+    ble_comm_init.client_disconnected_cb    = ble_client_disconnected_callback;
 
     if(!ble_communicaror_init(&ble_communicator, &ble_comm_init))
     {
@@ -483,8 +420,7 @@ int main(void)
     parser_init(&parser_inst, &parser_info);
     usb_agent_init();
 
-    uint32_t ack_send_data_size = sizeof(ack_send_data);
-    ack_send_data ack_data_to_send;
+
 
     while(1)
     {
@@ -504,63 +440,6 @@ int main(void)
                     p_cmd[unCMDSize] = '\0';
                     parser_parse_cmd(&parser_inst, p_cmd);
                 }
-            }
-        }
-
-        if(is_acksend_complete)
-        {
-            if(bytes_in_ringbuf >= ack_send_data_size)
-            {
-
-                NRF_LOG_INFO("Bytes in ringbuf %u send_data_size %u", bytes_in_ringbuf, ack_send_data_size);
-
-                size_t get_len = ack_send_data_size;
-
-               if(NRF_SUCCESS != nrf_ringbuf_cpy_get(&m_ringbuf, (uint8_t*)&ack_data_to_send, &get_len))
-               {
-                   NRF_LOG_INFO("nrf_ringbuf_cpy_get acksend error");
-               }
-               else
-               {
-                    bytes_in_ringbuf-=get_len;
-                    
-                    ble_led_components send_led_color;
-
-                    switch(ack_data_to_send.color_code)
-                    {
-                        case SEND_H_CODE:
-                        {
-                            send_led_color = BLE_LED_COMPONENT_H;
-                            break;
-                        }
-
-                        case SEND_S_CODE:
-                        {
-                            send_led_color = BLE_LED_COMPONENT_S;
-                            break;
-                        }
-
-                        case SEND_V_CODE:
-                        {
-                            send_led_color = BLE_LED_COMPONENT_V;
-                            break;
-                        }
-
-                        default:
-                        {
-                            send_led_color = BLE_LED_COMPONENT_H;
-                            break;
-                        } 
-                    }
-                    
-                    is_acksend_complete = false;
-                    if(!ble_communicator_send_color(&ble_communicator, send_led_color, ack_data_to_send.color_value, true))
-                    {
-                        is_acksend_complete = true;
-                        NRF_LOG_INFO("ble_communicator_send_color acksend error");
-                    }
-               }
-
             }
         }
 

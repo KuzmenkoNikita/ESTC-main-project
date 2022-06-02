@@ -18,51 +18,39 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                                             
                               0x84, 0x22, 0x03, 0x42, 0xAB, 0x7E, 0x17, 0xAC}
 
 #define ESTC_UUID_SERVICE       0x16C1
-#define ESTC_UUID_CHAR_LED_H    0x16C2
-#define ESTC_UUID_CHAR_LED_S    0x16C3
-#define ESTC_UUID_CHAR_LED_V    0x16C4
+
+#define ESTC_UUID_CHAR_SET_LED_RGB          0x16C2
+#define ESTC_UUID_CHAR_LED_COLOR_CHANGED    0x16C3
+
 /* ***************************************************************************** */
 /**
  * @brief characteristic write callback
  *
- * @param char_uuid     char uuiid
- * @param write_val     value
+ * @param R             Red color component 
+ * @param G             Green color component  
+ * @param B             Blue color component 
  * @param p_ctx         contex passed to callback
  */
-typedef void (*char_write_callback) (uint16_t char_uuid, uint32_t write_val, void* p_ctx);
+typedef void (*led_color_write_callback) (uint8_t R, uint8_t G, uint8_t B, void* p_ctx);
 
-/**
- * @brief Handle Value Notification transmission complete callback
- * @param p_ctx         contex passed to callback
- */
-typedef void (*char_tx_done_callback) (void* p_ctx);
 
 /** @brief estc ble service instance */
 typedef struct
 {
     uint16_t                    service_handle;
     uint8_t                     uuid_type;
-    ble_gatts_char_handles_t    char_led_h_handle;
-    ble_gatts_char_handles_t    char_led_s_handle;
-    ble_gatts_char_handles_t    char_led_v_handle;
-    char_write_callback         fn_char_write_cb;
-    char_tx_done_callback       fn_tx_done;
+    ble_gatts_char_handles_t    char_led_color_changed;
+    ble_gatts_char_handles_t    char_set_led_rgb;
+    led_color_write_callback    fn_char_write_cb;
     void*                       p_ctx;
 } ble_estc_service_t;
 
-/** @brief sending method */
-typedef enum
-{
-    BLE_ESTC_SEND_BY_NOTIFICATION,
-    BLE_ESTC_SEND_BY_INDICATION
-}ble_estc_send_type;
 
 /** @brief estc ble service init param */
 typedef struct 
 {
-    char_write_callback     fn_char_write_callback;
-    char_tx_done_callback   fn_tx_done_callback;
-    void*                   p_ctx;
+    led_color_write_callback    fn_char_write_callback;
+    void*                       p_ctx;
 }ble_estc_service_info;
 
 
@@ -70,6 +58,7 @@ typedef struct
  * @brief estc module initialization 
  *
  * @param service   pointer to ESTC service instance
+ * @param p_init_info module init params
  * @return true if OK, false if error
  */
 bool estc_ble_service_init(ble_estc_service_t *service, ble_estc_service_info* p_init_info);
@@ -84,11 +73,11 @@ void estc_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
  *
  * @param conn_handle   Handle of the peripheral connection
  * @param service       pointer to ESTC service instance
- * @param char_uuid     char uuiid
- * @param value         char value to indicate
- * @param send_method   indication or notification
+ * @param R             Red color component 
+ * @param G             Green color component  
+ * @param B             Blue color component  
  */
-bool estc_service_send_char_value(uint16_t conn_handle, ble_estc_service_t *service, 
-                                    uint16_t char_uuid, uint16_t value, ble_estc_send_type send_method);
+bool estc_service_led_color_change(uint16_t conn_handle, ble_estc_service_t *service, 
+                                uint8_t R, uint8_t G, uint8_t B);
 
 #endif /* ESTC_SERVICE_H__ */
