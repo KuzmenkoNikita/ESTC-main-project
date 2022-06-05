@@ -172,7 +172,7 @@ static ret_code_t estc_ble_add_ledctrl_char(led_ctrl_char_params* p_char_params)
     attr_md.vlen            = 0;
     attr_md.wr_auth         = 0;
 
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
 
     ble_gatts_attr_t attr_char_value = { 0 };

@@ -14,9 +14,10 @@
 #include "ble_communicator.h"
 #include "pca10059_rgb_led.h"
 #include "HSV_to_RGB_Calc.h"
-#include "BLE_LedStateSaver.h"
 #include "WMIndication.h"
 #include "pca10059_button.h"
+#include "FDS_LedStateSaver.h"
+
 /* ******************************************************************* */
 #define WAIT_APPLY_PRESSING_MS      200
 #define MAX_CMD_BUF_SIZE            200
@@ -24,10 +25,9 @@
 #define SEND_S_CODE                 2
 #define SEND_V_CODE                 3
 /* ******************************************************************* */
-static ble_ledsaver_inst ledsaver_inst;
 static ble_communicator_t ble_communicator;
-static ble_ledsaver_state   ledsaver_init_state = BLE_LEDSAVER_STATE_UNDEFINED;
-static ble_ledsaver_state   ledsaver_save_state = BLE_LEDSAVER_WRITE_SUCCESSFUL;
+static fds_ledsaver_state   ledsaver_init_state = FDS_LEDSAVER_STATE_UNDEFINED;
+static fds_ledsaver_state   ledsaver_save_state = FDS_LEDSAVER_WRITE_COMPLETE;
 static SHSVCoordinates hsv_led_coords = {0};
 static EWMTypes current_workmode = EWM_NO_INPUT;
 static uint32_t global_time = 0;
@@ -44,7 +44,7 @@ APP_TIMER_DEF(global_time_timer);
 /* ******************************************************************* */
 void global_time_tiomeout_handler(void * p_context);
 static void increment_hsv(SHSVCoordinates* psHSV, EWMTypes eWM);
-static void save_led_hsv_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates* p_hsv_led);
+static void save_led_hsv_state(/* ble_ledsaver_inst* p_saver_inst,*/ SHSVCoordinates* p_hsv_led);
 void parser_help_request_callback(void* p_data, const char** p_m_sz_info, uint32_t  array_size);
 void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data);
 void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data);
@@ -60,16 +60,51 @@ static void log_init(void)
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 /* ******************************************************************* */
-static void save_led_hsv_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates* p_hsv_led)
+void fds_ledstatesaver_callback(fds_ledsaver_state state, void* p_data)
 {
-    if(!p_saver_inst || !p_hsv_led)
+    switch(state)
+    {
+        case FDS_LEDSAVER_INIT_COMPLETE:
+        {
+            ledsaver_init_state = FDS_LEDSAVER_INIT_COMPLETE;
+            break;
+        }
+
+        case FDS_LEDSAVER_INIT_ERROR:
+        {
+            ledsaver_init_state = FDS_LEDSAVER_INIT_ERROR;
+            break;
+        }
+
+        case FDS_LEDSAVER_WRITE_COMPLETE:
+        {
+            ledsaver_save_state = FDS_LEDSAVER_WRITE_COMPLETE;
+            break;
+        }
+
+        case FDS_LEDSAVER_WRITE_ERROR:
+        {
+            ledsaver_save_state = FDS_LEDSAVER_WRITE_ERROR;
+            break;
+        }
+
+        default:
+        {
+            return;
+        }
+    }
+}
+/* ******************************************************************* */
+static void save_led_hsv_state(/* ble_ledsaver_inst* p_saver_inst, */SHSVCoordinates* p_hsv_led)
+{
+    if(!p_hsv_led)
         return;
 
-    if(ledsaver_save_state != BLE_LEDSAVER_STATE_UNDEFINED)
+    if(ledsaver_save_state != FDS_LEDSAVER_STATE_UNDEFINED)
     {
-        ledsaver_save_state = BLE_LEDSAVER_STATE_UNDEFINED;
+        ledsaver_save_state = FDS_LEDSAVER_STATE_UNDEFINED;
 
-        if(!led_state_saver_save_state(p_saver_inst, p_hsv_led))
+        if(!fds_led_state_saver_save_state(p_hsv_led))
         {
             NRF_LOG_INFO("ble_set_led_color_component: led_state_saver_save_state error");
         }
@@ -77,7 +112,7 @@ static void save_led_hsv_state(ble_ledsaver_inst* p_saver_inst, SHSVCoordinates*
     else
     {
         NRF_LOG_INFO("ble_set_led_color_component: can't save led state - flash is not ready");
-    }   
+    }  
 }
 /* ******************************************************************* */
 static void increment_hsv(SHSVCoordinates* psHSV, EWMTypes eWM)
@@ -178,53 +213,11 @@ void ble_set_led_color_component(uint8_t R, uint8_t G, uint8_t B, void* p_ctx)
 
     NRF_LOG_INFO("BLE led set: R: %u, G: %u, B: %u", sRGB.R, sRGB.G, sRGB.B);
 
-    save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
+    save_led_hsv_state(/* &ledsaver_inst,*/ &hsv_led_coords);
 
     if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
     {
         NRF_LOG_INFO("ble_set_led_color_component: ble_communicator_send_color error ");
-    }
-}
-/* ********************************************************************** */
-void ble_ledsaver_state_changed(ble_ledsaver_state state, void* p_data)
-{
-    switch(state)
-    {
-        case BLE_LEDSAVER_INIT_SUCCESSFUL:
-        {
-            NRF_LOG_INFO("BLE_LEDSAVER_INIT_SUCCESSFUL");
-            ledsaver_init_state = BLE_LEDSAVER_INIT_SUCCESSFUL;
-
-            break;
-        }
-
-        case BLE_LEDSAVER_INIT_ERROR:
-        {
-            NRF_LOG_INFO("BLE_LEDSAVER_INIT_ERROR");
-            ledsaver_init_state = BLE_LEDSAVER_INIT_ERROR;
-            break;
-        }
-
-        case BLE_LEDSAVER_WRITE_SUCCESSFUL:
-        {
-            ledsaver_save_state = BLE_LEDSAVER_WRITE_SUCCESSFUL;
-            NRF_LOG_INFO("BLE_LEDSAVER_WRITE_SUCCESSFUL");
-            
-            break;
-        }
-
-        case BLE_LEDSAVER_WRITE_ERROR:
-        {
-            ledsaver_save_state = BLE_LEDSAVER_WRITE_ERROR;
-            NRF_LOG_INFO("BLE_LEDSAVER_WRITE_ERROR");
-            break;
-        }
-
-        default:
-        {
-            NRF_LOG_INFO("ble_ledsaver_state_changed: unexpected state");
-            break;
-        }
     }
 }
 /* ********************************************************************** */
@@ -236,7 +229,7 @@ void button_dblclick_handler(eBtnState eState, void* pData)
     {
         current_workmode = EWM_NO_INPUT;
 
-        save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
+        save_led_hsv_state(/*&ledsaver_inst,*/ &hsv_led_coords);
     }
     else
     {
@@ -279,7 +272,7 @@ void parser_cmd_set_rgb_callback(uint8_t r, uint8_t g, uint8_t b, void* p_data)
 
     hsv_led_coords = sHSV;
 
-    save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
+    save_led_hsv_state(/*&ledsaver_inst,*/ &hsv_led_coords);
     
     if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
     {
@@ -307,7 +300,7 @@ void parser_cmd_set_hsv_callback(uint16_t h, uint8_t s, uint8_t v, void* p_data)
 
     hsv_led_coords = sHSV;
 
-    save_led_hsv_state(&ledsaver_inst, &hsv_led_coords);
+    save_led_hsv_state(/*&ledsaver_inst,*/ &hsv_led_coords);
     
     if(!ble_communicator_send_color(&ble_communicator, sRGB.R, sRGB.G, sRGB.B))
     {
@@ -356,6 +349,10 @@ int main(void)
         NRF_LOG_INFO("WMIndication_init failed!");
     }
 
+    fds_ledsaver_init ledsaver_init_params;
+    ledsaver_init_params.p_data             = 0;
+    ledsaver_init_params.fn_state_changed   = fds_ledstatesaver_callback;   
+
     WMIndication_SetWM(current_workmode);
 
     ble_comm_init.p_ctx                     = (void*)&hsv_led_coords;
@@ -378,30 +375,30 @@ int main(void)
 
     pca10059_button_init(&button_init_params);
     pca10059_button_enable_irq();
-
-    ble_ledsaver_init ble_ledsaver_init;
-
-    ble_ledsaver_init.first_page    = 0x000DE000;
-    ble_ledsaver_init.second_page   = 0x000DD000;
-    ble_ledsaver_init.p_data        = (void*)&ledsaver_inst;
-    ble_ledsaver_init.state_changed_callback = ble_ledsaver_state_changed;
-
-    if(!led_state_saver_init(&ledsaver_inst, &ble_ledsaver_init))
+    
+    if(!fds_led_state_saver_init(&ledsaver_init_params))
     {
-        NRF_LOG_INFO("led_state_saver_init failed!");
+        NRF_LOG_INFO("fds_led_state_saver_init ERROR!");
     }
 
-    while(ledsaver_init_state == BLE_LEDSAVER_STATE_UNDEFINED);
-
-    if(ledsaver_init_state != BLE_LEDSAVER_INIT_SUCCESSFUL)
+    while(ledsaver_init_state == FDS_LEDSAVER_STATE_UNDEFINED)
     {
-        NRF_LOG_INFO("led_state_saver_init error: no status changed");
+        NRF_LOG_INFO("waiting for led_state_saver_init...");
+        LOG_BACKEND_USB_PROCESS();
+        NRF_LOG_PROCESS();
     }
 
-    if(!led_state_saver_get_state(&ledsaver_inst, &hsv_led_coords))
+    if(ledsaver_init_state != FDS_LEDSAVER_INIT_COMPLETE)
     {
-        NRF_LOG_INFO("led_state_saver_get_state error");
+        NRF_LOG_INFO("fds_led_state_saver_init: BAD init flag");
     }
+
+
+    if(!fds_led_state_saver_get_state(&hsv_led_coords))
+    {
+        NRF_LOG_INFO("fds_led_state_saver_get_state ERROR!");
+    }
+
 
     SRGBCoordinates sRGB;
     HSVtoRGB_calc(&hsv_led_coords, &sRGB);
@@ -419,8 +416,6 @@ int main(void)
 
     parser_init(&parser_inst, &parser_info);
     usb_agent_init();
-
-
 
     while(1)
     {

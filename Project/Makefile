@@ -106,6 +106,8 @@ SRC_FILES += \
   $(PROJ_DIR)/pca10059_button/pca10059_button.c \
   $(PROJ_DIR)/usb_agent/usb_agent.c \
   $(PROJ_DIR)/LEDState_Parser/LEDState_Parser.c \
+  $(SDK_ROOT)/components/ble/peer_manager/peer_manager.c  \
+  $(PROJ_DIR)/LedStateSaver/FDS_LedStateSaver/FDS_LedStateSaver.c \
   $(PROJ_DIR)/main.c \
 
 
@@ -251,6 +253,9 @@ INC_FOLDERS += \
   $(PROJ_DIR)/pca10059_button \
   $(PROJ_DIR)/usb_agent \
   $(PROJ_DIR)/LEDState_Parser \
+  $(SDK_ROOT)/components/ble/peer_manager  \
+  $(PROJ_DIR)/LedStateSaver/FDS_LedStateSaver \
+  $(PROJ_DIR)/LedStateSaver \
 
 
 # Libraries common to all targets

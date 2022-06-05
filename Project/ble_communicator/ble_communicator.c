@@ -7,6 +7,7 @@
 #include "estc_service.h"
 #include "ble_conn_params.h"
 #include "app_timer.h"
+#include "peer_manager.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -357,6 +358,63 @@ static bool advertising_start(void)
     return true;
 }
 /* ***************************************************************************************************** */
+static void peer_manager_event_handler(pm_evt_t const * p_evt)
+{
+   switch(p_evt->evt_id)
+   {
+        case PM_EVT_BONDED_PEER_CONNECTED:
+        {
+            NRF_LOG_INFO("peer_manager_event_handler: PM_EVT_BONDED_PEER_CONNECTED");
+            break;
+        }
+
+        default:
+        {
+            break;
+        }
+   }
+}
+/* ***************************************************************************************************** */
+static bool peer_manager_init(void)
+{
+   if(NRF_SUCCESS != pm_init())
+   {
+       return false;
+   }
+
+   //pm_peers_delete();
+   
+   ble_gap_sec_params_t sec_param;
+ 
+   memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
+
+   sec_param.bond              = true;
+   sec_param.mitm              = false;
+   sec_param.lesc              = 0;
+   sec_param.keypress          = 0;
+   sec_param.io_caps           = BLE_GAP_IO_CAPS_NONE;
+   sec_param.oob               = false;
+   sec_param.min_key_size      = 7;
+   sec_param.max_key_size      = 16;
+   sec_param.kdist_own.enc     = 1;
+   sec_param.kdist_own.id      = 1;
+   sec_param.kdist_peer.enc    = 1;
+   sec_param.kdist_peer.id     = 1;
+ 
+   if(NRF_SUCCESS != pm_sec_params_set(&sec_param))
+   {
+       return false;
+   }
+   
+ 
+   if(NRF_SUCCESS != pm_register(peer_manager_event_handler))
+   {
+       return false;
+   }
+
+    return true;
+}
+/* ***************************************************************************************************** */
 bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_params)
 {
     p_ctx->led_set_color_cb         = p_init_params->led_set_color_cb;
@@ -406,6 +464,12 @@ bool ble_communicaror_init(ble_communicator_t* p_ctx, ble_comm_init_t* p_init_pa
     {
         NRF_LOG_INFO("ble_communicaror_init conn_params_init failed!");
         return false;
+    }
+
+    if(!peer_manager_init())
+    {
+        NRF_LOG_INFO("ble_communicaror_init peer_manager_init failed!");
+        return false;       
     }
 
     return true;
